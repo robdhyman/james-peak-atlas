@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#193e35"><meta name="description" content="A private James Peak Wilderness scouting atlas with locally bundled terrain, water, canopy and access evidence."><title>James Peak · Scouting Atlas</title><link rel="stylesheet" href="vendor/leaflet.css"><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="topbar">
+ <button id="menuButton" class="icon-button menu-button" aria-label="Toggle map panel" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+ <a class="brand" href="#" aria-label="James Peak scouting atlas home"><svg class="brand-mark" viewBox="0 0 40 34" aria-hidden="true"><path d="m2 29 13-23 8 13 5-8 10 18H2Z"/><path d="m10 15 5 4 4-5M23 19l5 4 4-4"/></svg><div><span class="eyebrow">FIELD ATLAS / COLORADO</span><h1>James Peak</h1></div></a>
+ <div class="topbar-context"><span class="scenario-chip"><span></span>LOW WATER · 2027</span><span class="occupancy">Occupancy assumed for planning</span></div>
+ <div class="header-actions"><button class="text-button" id="methodButton"><span class="info-dot">i</span><span>Method & sources</span></button><button class="export-button" id="exportButton" aria-expanded="false">Export pins <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-4-4 4 4 4-4M4 13v4h12v-4"/></svg></button><div id="exportMenu" class="export-menu hidden"><button data-format="geojson">GeoJSON · map apps</button><button data-format="gpx">GPX · GPS devices</button><button data-format="csv">CSV · scouting log</button></div></div>
+</header>
+<div class="workspace">
+ <aside id="sidebar" class="sidebar" aria-label="Map controls">
+  <div class="sidebar-intro"><div class="overline">JAMES PEAK WILDERNESS</div><p>Find the next place worth a walk.</p><div class="area-stats"><span id="areaSize">17,000+ acres</span><span class="tiny-dot"></span><span id="candidateCount">Loading candidates</span></div></div>
+  <div class="side-tabs" role="tablist" aria-label="Atlas panels"><button id="layersTab" role="tab" aria-selected="true" aria-controls="layersPanel" class="active">Map layers</button><button id="reconTab" role="tab" aria-selected="false" aria-controls="reconPanel">Recon list <span id="reconCount">—</span></button></div>
+  <section id="layersPanel" class="side-panel" role="tabpanel" aria-labelledby="layersTab">
+   <div class="preset-row" aria-label="Map presets"><button data-preset="terrain" class="active">Terrain</button><button data-preset="water">Low water</button><button data-preset="quiet">Quiet cover</button></div>
+   <div class="layer-section"><div class="section-heading"><h2>Ground & access</h2><span>01</span></div><div id="groundLayers"></div></div>
+   <div class="layer-section"><div class="section-heading"><h2>Habitat evidence</h2><span>02</span></div><div id="habitatLayers"></div></div>
+   <div class="layer-section perfect-section"><div class="section-heading"><h2>“Perfect spots”</h2><span class="amber-dot"></span></div><p class="section-copy">Best-fit scouting candidates, with the ingredients visible.</p><div id="candidateLayers"></div><div class="component-layers" id="componentLayers"></div></div>
+   <div class="opacity-control"><label for="overlayOpacity">Overlay strength <output id="opacityValue">65%</output></label><input id="overlayOpacity" type="range" min="10" max="100" value="65"></div>
+   <div class="field-note"><span class="note-label">LOW-WATER SCENARIO</span><p>Mapped perennial water and lakes receive more weight. A blue line is a place to verify water—not a promise it will flow.</p></div>
+  </section>
+  <section id="reconPanel" class="side-panel hidden" role="tabpanel" aria-labelledby="reconTab">
+   <div class="scope-control"><button data-scope="near" class="active">Near East Portal</button><button data-scope="all">All wilderness</button></div><p class="scope-note">Near = no more than 6 miles round trip as the crow flies. Walking routes remain unverified.</p>
+   <div class="search-wrap"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="m12 12 5 5"/></svg><input id="candidateSearch" type="search" placeholder="Find a spot or ID" aria-label="Search scouting candidates"></div>
+   <div class="recon-toolbar"><select id="statusFilter" aria-label="Filter by recon status"><option value="all">All statuses</option><option value="todo">To scout</option><option value="scouted">Scouted</option><option value="camera">Camera placed</option><option value="reject">Ruled out</option></select><button id="resetStatus" class="subtle-button" title="Reset all saved scouting statuses">Reset log</button></div>
+   <p class="list-note">Nearby candidates follow practical scouting order. Numbers identify the model rank within each pool; scores are not harvest odds.</p><div id="candidateList"><div class="loading-card">Preparing the scouting list…</div></div>
+  </section>
+  <div class="sidebar-bottom"><span class="bundle-dot"></span><span id="bundleStatus">Loading bundled map data</span></div>
+ </aside>
+ <main class="map-stage" aria-label="Interactive scouting map"><div id="map" role="application" aria-label="James Peak map. Use arrow keys to pan, plus and minus to zoom."></div>
+  <div class="map-top-tools"><div class="focus-control"><button id="fitWilderness" class="active">Wilderness</button><button id="fitAnchors">Your locations</button><button id="fitEastPortal">East Portal</button></div><button id="legendButton" class="map-small-button" aria-expanded="true">Legend</button></div>
+  <div id="loadingOverlay" class="map-loading"><div class="loader-ring"></div><strong>Opening the field atlas</strong><span>Loading local terrain and scouting layers</span></div>
+  <div id="mapAlert" class="map-alert hidden" role="status"></div>
+  <div id="legend" class="map-legend"><div class="legend-heading"><span>ON THE MAP</span><button id="legendClose" aria-label="Hide legend">×</button></div><div id="legendItems"></div><p id="contourZoomNote" class="legend-note"></p></div>
+  <div class="map-bottom-note"><span id="cursorCoords">WGS84 · decimal degrees</span><span>Scouting model · field verification required</span></div>
+  <article id="detailPanel" class="detail-panel hidden" aria-live="polite" aria-label="Selected scouting location"><button id="closeDetail" class="detail-close" aria-label="Close location details">×</button><div id="detailContent"></div></article>
+ </main>
+</div>
+<dialog id="methodDialog"><div class="dialog-heading"><div><span class="overline">READ THE EVIDENCE</span><h2>How this atlas works</h2></div><button id="closeMethod" class="icon-button" aria-label="Close method and sources">×</button></div><div id="methodContent" class="dialog-body"></div></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="vendor/leaflet.js"></script><script src="app.js"></script><script src="canopy-probe.js"></script>
+</body></html>

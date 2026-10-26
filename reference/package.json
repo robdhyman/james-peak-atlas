@@ -1,0 +1,13 @@
+{
+  "name": "james-peak-scouting-atlas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portable James Peak scouting atlas reference app and React rebuild handoff",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "check": "node scripts/check.mjs",
+    "build": "node scripts/check.mjs && node scripts/build.mjs"
+  }
+}

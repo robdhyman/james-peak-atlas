@@ -1,0 +1,3 @@
+# Keep Leaflet behind a hand-written map adapter instead of react-leaflet
+
+The rebuild keeps Leaflet 1.9.4, the renderer the reference app already uses, and wraps it in an imperative adapter module. React drives it through a narrow interface (layers, opacity, selection, events). We didn't use `react-leaflet` because it ties the map's lifecycle to React rendering. The map should be created once and outlive sidebar re-renders, and its setup and teardown should sit behind one testable boundary. Switching to MapLibre was also rejected for now: it would change the renderer and the data presentation at the same time, losing the like-for-like comparison with the baseline.
