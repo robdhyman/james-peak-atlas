@@ -213,6 +213,29 @@ describe('malformed data names the file, the record and the problem', () => {
     })
   })
 
+  // Legend colours are drawn into a CSS gradient, so only plain hex colours may pass.
+  test('a legend gradient that is not a list of colours', async () => {
+    const source = withFile('data/manifest.json', (json) => {
+      json['layers'].darkness.legend.gradient = '#fcfbfd,red;background:url(https://example.com/x)'
+    })
+    expect(await atlasError(source)).toEqual({
+      file: 'data/manifest.json',
+      record: 'layers.darkness.legend.gradient',
+      problem: 'expected comma-separated #rrggbb colours',
+    })
+  })
+
+  test('a legend stop colour that is not a colour', async () => {
+    const source = withFile('data/manifest.json', (json) => {
+      json['layers'].canopy.legend[1].color = 'url(https://example.com/x)'
+    })
+    expect(await atlasError(source)).toEqual({
+      file: 'data/manifest.json',
+      record: 'layers.canopy.legend.1.color',
+      problem: 'expected a #rrggbb colour',
+    })
+  })
+
   test('raster bounds given as [lon, lat] pairs', async () => {
     const source = withFile('data/manifest.json', (json) => {
       for (const corner of json['layers'].hillshade.bounds) corner.reverse()

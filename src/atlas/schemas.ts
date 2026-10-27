@@ -13,17 +13,33 @@ export const LonLat = z.tuple([finite, finite])
 /** Leaflet-order image bounds, `[[south, west], [north, east]]`. Order is checked by the loader. */
 export const LeafletBounds = z.tuple([z.tuple([finite, finite]), z.tuple([finite, finite])])
 
+/** A `#rrggbb` colour; legend ramps are drawn from these, so nothing else gets through. */
+const HexColor = z.string().regex(/^#[0-9a-f]{6}$/i, 'expected a #rrggbb colour')
+
+/** A raster's colour ramp: either stops by value, or a min–max range with a comma-separated gradient. */
+const RasterLegend = z.union([
+  z.array(z.looseObject({ value: finite, color: HexColor })).min(2),
+  z.looseObject({
+    min: finite,
+    max: finite,
+    gradient: z.string().regex(/^#[0-9a-f]{6}(,#[0-9a-f]{6})+$/i, 'expected comma-separated #rrggbb colours'),
+  }),
+])
+
 const RasterLayer = z.looseObject({
   type: z.literal('raster'),
   url: z.string(),
   bounds: LeafletBounds,
   label: z.string(),
+  description: z.string().optional(),
+  legend: RasterLegend.optional(),
 })
 
 const GeoJsonLayer = z.looseObject({
   type: z.literal('geojson'),
   url: z.string(),
   label: z.string(),
+  description: z.string().optional(),
 })
 
 export const Manifest = z.looseObject({
@@ -132,3 +148,5 @@ export type Observation = DeepReadonly<z.output<typeof Observations>['features']
 export type FeatureCollection = DeepReadonly<z.output<typeof FeatureCollection>>
 export type LeafletBounds = DeepReadonly<z.output<typeof LeafletBounds>>
 export type LonLat = DeepReadonly<z.output<typeof LonLat>>
+export type ManifestLayer = Manifest['layers'][string]
+export type RasterLegend = DeepReadonly<z.output<typeof RasterLegend>>

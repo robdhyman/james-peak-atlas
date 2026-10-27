@@ -4,32 +4,57 @@
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Candidate, FeatureCollection, LeafletBounds } from '../atlas/schemas.ts'
+import {
+  fixedRasterOpacity,
+  isIndexContour,
+  MINOR_CONTOUR_MIN_ZOOM,
+  PANES,
+  pathStyle,
+  pointMarker,
+  rasterPane,
+  vectorPane,
+} from './layerStyles.ts'
 
+/**
+ * A layer to draw. `revision` changes when the layer must be rebuilt from
+ * scratch, e.g. to retry an image that failed to load.
+ */
 export type MapLayer =
-  | { readonly key: string; readonly kind: 'geojson'; readonly data: FeatureCollection }
-  | { readonly key: string; readonly kind: 'raster'; readonly url: string; readonly bounds: LeafletBounds }
+  | { readonly key: string; readonly kind: 'geojson'; readonly data: FeatureCollection; readonly revision: number }
+  | {
+      readonly key: string
+      readonly kind: 'raster'
+      readonly url: string
+      readonly bounds: LeafletBounds
+      readonly revision: number
+    }
 
 export interface MapEvents {
   onCandidateClick(id: string): void
+  /** A raster's image loaded, for the layer spec with this revision. */
+  onLayerLoad(key: string, revision: number): void
+  /** A raster's image failed to load, for the layer spec with this revision. */
+  onLayerError(key: string, revision: number): void
+  onZoomChange(zoom: number): void
 }
 
 export interface MapAdapter {
-  /** Shows exactly these layers. A layer keeps its Leaflet object while its spec is unchanged. */
+  /**
+   * Shows exactly these layers. A layer keeps its Leaflet object, even while
+   * hidden, until its source or revision changes.
+   */
   setLayers(layers: readonly MapLayer[]): void
+  /** Opacity, 0–1, of the evidence overlays. Base rasters and vector layers keep their own. */
+  setOverlayOpacity(opacity: number): void
   setCandidates(candidates: readonly Candidate[]): void
   select(id: string | null): void
   fitTo(bounds: LeafletBounds): void
   destroy(): void
 }
 
-// Stacking order, bottom to top.
-const PANES = { relief: 210, raster: 300, boundaries: 450, candidates: 620 } as const
-
-const PATH_STYLES: Record<string, L.PathOptions> = {
-  boundary: { color: '#375f44', weight: 2.2, opacity: 0.9, fill: false, dashArray: '8 5' },
-}
-
-const RASTER_OPACITY: Record<string, number> = { hillshade: 0.9 }
+/** Contour labels are spaced on a grid of cells this size, in pixels, and capped. */
+const CONTOUR_LABEL_CELL = { x: 150, y: 110 } as const
+const MAX_CONTOUR_LABELS = 45
 
 export function createMapAdapter(container: HTMLElement, events: MapEvents): MapAdapter {
   const map = L.map(container, {
@@ -44,27 +69,97 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>')
   map.attributionControl.addAttribution('USGS · USFS · NHD · NLCD')
   for (const [name, zIndex] of Object.entries(PANES)) map.createPane(name).style.zIndex = String(zIndex)
+  map.getPane('contourLabels')!.style.pointerEvents = 'none'
 
-  const layers = new Map<string, { spec: MapLayer; layer: L.Layer }>()
+  const built = new Map<string, { spec: MapLayer; layer: L.Layer }>()
   const markers = new Map<string, L.Marker>()
   const candidateGroup = L.layerGroup().addTo(map)
+  const contourLabels = L.layerGroup().addTo(map)
+  let contourTimer: ReturnType<typeof setTimeout> | undefined
+  let overlayOpacity = 0.65
   let selected: string | null = null
 
+  map.on('zoomend', () => {
+    const contours = built.get('contours')?.layer
+    if (contours instanceof L.GeoJSON) contours.setStyle((feature) => pathStyle('contours', feature?.properties, map.getZoom()))
+    events.onZoomChange(map.getZoom())
+  })
+  map.on('moveend', () => refreshContourLabels())
+
   function buildLayer(spec: MapLayer): L.Layer {
+    const { key, revision } = spec
     if (spec.kind === 'raster') {
       const [[south, west], [north, east]] = spec.bounds
-      return L.imageOverlay(spec.url, [[south, west], [north, east]], {
-        pane: spec.key === 'hillshade' ? 'relief' : 'raster',
-        opacity: RASTER_OPACITY[spec.key] ?? 0.65,
-        interactive: false,
-      })
+      return L.imageOverlay(
+        spec.url,
+        [
+          [south, west],
+          [north, east],
+        ],
+        {
+          pane: rasterPane(key),
+          opacity: fixedRasterOpacity(key) ?? overlayOpacity,
+          interactive: false,
+          className: `layer-${key}`,
+        },
+      )
+        .on('load', () => events.onLayerLoad(key, revision))
+        .on('error', () => events.onLayerError(key, revision))
     }
     // Leaflet only reads the features; its types just don't say readonly.
     return L.geoJSON(spec.data as unknown as GeoJSON.FeatureCollection, {
-      pane: 'boundaries',
-      style: PATH_STYLES[spec.key] ?? {},
+      pane: vectorPane(key),
+      style: (feature) => pathStyle(key, feature?.properties, map.getZoom()),
       interactive: false,
+      pointToLayer: (feature, latlng) => {
+        const { className, glyph } = pointMarker(key)
+        const name = (feature.properties as { name?: unknown } | null)?.name
+        return L.marker(latlng, {
+          pane: 'points',
+          // These markers open nothing, so they stay out of the tab order.
+          keyboard: false,
+          ...(typeof name === 'string' ? { title: name } : {}),
+          icon: L.divIcon({ className, html: `<span>${glyph}</span>`, iconSize: [17, 17], iconAnchor: [8, 8] }),
+        })
+      },
     })
+  }
+
+  function sameSource(a: MapLayer, b: MapLayer): boolean {
+    if (a.revision !== b.revision) return false
+    if (a.kind === 'raster' && b.kind === 'raster') return a.url === b.url
+    if (a.kind === 'geojson' && b.kind === 'geojson') return a.data === b.data
+    return false
+  }
+
+  function refreshContourLabels() {
+    clearTimeout(contourTimer)
+    contourTimer = setTimeout(() => {
+      contourLabels.clearLayers()
+      const contours = built.get('contours')
+      if (!contours || contours.spec.kind !== 'geojson' || !map.hasLayer(contours.layer)) return
+      if (map.getZoom() < MINOR_CONTOUR_MIN_ZOOM) return
+      const bounds = map.getBounds()
+      const cells = new Set<string>()
+      for (const { geometry, properties } of contours.spec.data.features) {
+        if (cells.size >= MAX_CONTOUR_LABELS) break
+        const elevation = properties?.['elevation_ft']
+        if (typeof elevation !== 'number' || !isIndexContour(properties)) continue
+        const line = geometry?.['coordinates'] as readonly (readonly [number, number])[] | undefined
+        const middle = line?.[Math.floor(line.length / 2)]
+        if (!middle) continue
+        const latLng = L.latLng(middle[1], middle[0])
+        if (!bounds.contains(latLng)) continue
+        const point = map.latLngToContainerPoint(latLng)
+        const cell = `${Math.floor(point.x / CONTOUR_LABEL_CELL.x)}:${Math.floor(point.y / CONTOUR_LABEL_CELL.y)}`
+        if (cells.has(cell)) continue
+        cells.add(cell)
+        L.tooltip({ permanent: true, direction: 'center', className: 'contour-label', opacity: 0.8, interactive: false, pane: 'contourLabels' })
+          .setLatLng(latLng)
+          .setContent(`${elevation.toLocaleString('en-US')}′`)
+          .addTo(contourLabels)
+      }
+    }, 80)
   }
 
   function markSelected(id: string, on: boolean) {
@@ -74,17 +169,31 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   return {
     setLayers(next) {
       const keys = new Set(next.map((spec) => spec.key))
-      for (const [key, { layer }] of layers) {
-        if (!keys.has(key)) {
-          layer.remove()
-          layers.delete(key)
-        }
+      for (const [key, { layer }] of built) {
+        if (!keys.has(key)) layer.remove()
       }
       for (const spec of next) {
-        const current = layers.get(spec.key)
-        if (current?.spec === spec) continue
-        current?.layer.remove()
-        layers.set(spec.key, { spec, layer: buildLayer(spec).addTo(map) })
+        let current = built.get(spec.key)
+        if (!current || !sameSource(current.spec, spec)) {
+          current?.layer.remove()
+          current = { spec, layer: buildLayer(spec) }
+          built.set(spec.key, current)
+        }
+        if (!map.hasLayer(current.layer)) current.layer.addTo(map)
+      }
+      // What Leaflet is actually drawing, for anyone checking the map against the controls.
+      container.dataset['drawnLayers'] = [...built]
+        .filter(([, { layer }]) => map.hasLayer(layer))
+        .map(([key]) => key)
+        .sort()
+        .join(' ')
+      refreshContourLabels()
+    },
+
+    setOverlayOpacity(opacity) {
+      overlayOpacity = opacity
+      for (const [key, { layer }] of built) {
+        if (layer instanceof L.ImageOverlay && fixedRasterOpacity(key) === null) layer.setOpacity(opacity)
       }
     },
 
@@ -141,8 +250,9 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
     },
 
     destroy() {
+      clearTimeout(contourTimer)
       map.remove()
-      layers.clear()
+      built.clear()
       markers.clear()
     },
   }

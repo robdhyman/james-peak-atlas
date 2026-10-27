@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const marker = (page: Page, id: string) => page.getByRole('button', { name: new RegExp(`^${id}: `) })
-const card = (page: Page) => page.getByRole('region').filter({ has: page.getByRole('heading', { level: 2 }) })
+const card = (page: Page) => page.getByRole('region').filter({ hasText: 'SCOUTING CANDIDATE' })
 
 test.describe('data to map', () => {
   test('draws the hillshade, the wilderness boundary and 16 candidate markers over the same ground', async ({ page }) => {

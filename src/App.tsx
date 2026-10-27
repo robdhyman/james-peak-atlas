@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
-import { type Atlas, type DataError, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, resolveUrl } from './atlas/data.ts'
+import { type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { type Atlas, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, MANIFEST_URL, resolveUrl } from './atlas/data.ts'
+import type { DataError } from './atlas/data.ts'
 import type { FeatureCollection } from './atlas/schemas.ts'
 import type { MapLayer } from './map/mapAdapter.ts'
 import { MapView } from './map/MapView.tsx'
 import { CandidateCard } from './ui/CandidateCard.tsx'
 import { FatalError } from './ui/FatalError.tsx'
+import { LayerControls } from './ui/LayerControls.tsx'
+import { initialLayerState, LAYERS, layerReducer } from './ui/layerState.ts'
+import { Legend } from './ui/Legend.tsx'
 
 type Load = { status: 'loading' } | { status: 'failed'; error: DataError } | { status: 'ready'; atlas: Atlas }
-
-/** The raster drawn under everything else until layer controls arrive. */
-const BASE_RASTER = 'hillshade'
 
 export function App({ source }: { source: DataSource }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
@@ -25,7 +26,117 @@ export function App({ source }: { source: DataSource }) {
   }, [source])
 
   if (load.status === 'failed') return <FatalError error={load.error} />
+  if (load.status === 'loading') {
+    return (
+      <Layout sidebar={null}>
+        <MapLoading />
+      </Layout>
+    )
+  }
+  return <AtlasView atlas={load.atlas} source={source} />
+}
 
+/** The loaded atlas. Its root owns the layer state: what's on, overlay strength, and each layer's status. */
+function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
+  const { manifest } = atlas
+  const [layerState, dispatch] = useReducer(layerReducer, undefined, initialLayerState)
+  const [vectors, setVectors] = useState<Readonly<Record<string, FeatureCollection>>>({})
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [zoom, setZoom] = useState<number | null>(null)
+  const [legendOpen, setLegendOpen] = useState(true)
+  // The attempt each layer last started fetching, so an attempt is fetched once.
+  const requested = useRef(new Map<string, number>())
+
+  // GeoJSON layers are fetched here when switched on. Rasters load as images
+  // inside the map, which reports back through onLayerLoad and onLayerError.
+  useEffect(() => {
+    for (const [key, { status, attempt }] of Object.entries(layerState.layers)) {
+      if (status.kind !== 'loading' || requested.current.get(key) === attempt) continue
+      const layer = manifest.layers[key]
+      if (layer?.type === 'raster') continue
+      requested.current.set(key, attempt)
+      if (!layer) {
+        dispatch({ type: 'failed', key, attempt, reason: `not listed in ${MANIFEST_URL}` })
+        continue
+      }
+      loadGeoJsonLayer(source, manifest, key).then((result) => {
+        if (result.ok) {
+          setVectors((current) => ({ ...current, [key]: result.value }))
+          dispatch({ type: 'loaded', key, attempt })
+        } else {
+          dispatch({ type: 'failed', key, attempt, reason: formatDataError(result.error) })
+        }
+      })
+    }
+  }, [layerState.layers, manifest, source])
+
+  const mapLayers = useMemo(
+    () =>
+      LAYERS.flatMap(({ key }): MapLayer[] => {
+        const entry = layerState.layers[key]
+        const layer = manifest.layers[key]
+        if (!entry?.on || !layer) return []
+        if (layer.type === 'raster') {
+          return [{ key, kind: 'raster', url: resolveUrl(source, layer.url), bounds: layer.bounds, revision: entry.attempt }]
+        }
+        const data = vectors[key]
+        return data && entry.status.kind === 'ready' ? [{ key, kind: 'geojson', data, revision: entry.attempt }] : []
+      }),
+    [layerState.layers, manifest, source, vectors],
+  )
+
+  const selected = atlas.candidates.find((candidate) => candidate.properties.id === selectedId)
+
+  return (
+    <Layout sidebar={<LayerControls manifest={manifest} state={layerState} dispatch={dispatch} />}>
+      <MapView
+        extent={manifest.bounds}
+        layers={mapLayers}
+        overlayOpacity={layerState.opacity / 100}
+        candidates={atlas.candidates}
+        selectedId={selectedId}
+        onCandidateClick={setSelectedId}
+        onLayerLoad={(key, attempt) => dispatch({ type: 'loaded', key, attempt })}
+        onLayerError={(key, attempt) => dispatch({ type: 'failed', key, attempt, reason: 'the image couldn’t be loaded' })}
+        onZoomChange={setZoom}
+      />
+      {atlas.warnings.length > 0 && (
+        <div
+          role="status"
+          className="absolute top-[77px] left-[23px] z-[600] max-w-[430px] rounded-[5px] border border-alert-line bg-alert px-3.5 py-2.5 text-[11px] text-alert-text shadow-panel max-tablet:inset-x-3 max-tablet:top-16"
+        >
+          {atlas.warnings.map((warning) => (
+            <p key={warning.file}>Couldn’t load {formatDataError(warning)}</p>
+          ))}
+        </div>
+      )}
+      <div className="pointer-events-none absolute top-5 right-[22px] z-[500] max-tablet:top-3 max-tablet:right-3">
+        <button
+          type="button"
+          onClick={() => setLegendOpen((open) => !open)}
+          aria-expanded={legendOpen}
+          aria-controls="map-legend"
+          className="pointer-events-auto rounded-[5px] border border-[#d8ded2] bg-sheet/95 px-3 py-2.5 text-[10px] shadow-[0_3px_14px_#233a1c0c] max-tablet:p-[9px] max-tablet:text-[9px]"
+        >
+          Legend
+        </button>
+      </div>
+      {legendOpen && (
+        <Legend
+          manifest={manifest}
+          state={layerState}
+          zoom={zoom}
+          onClose={() => setLegendOpen(false)}
+          // On a phone the open detail card takes the legend's place.
+          className={selected ? 'max-tablet:hidden' : ''}
+        />
+      )}
+      {selected && <CandidateCard candidate={selected} onClose={() => setSelectedId(null)} />}
+    </Layout>
+  )
+}
+
+function Layout({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
   return (
     <div className="flex h-full flex-col">
       <Topbar />
@@ -40,66 +151,17 @@ export function App({ source }: { source: DataSource }) {
               Find the next place worth a walk.
             </p>
           </div>
+          {sidebar && (
+            <div className="min-h-0 flex-1 overflow-auto border-t border-line px-[23px] pt-[19px] pb-5 [scrollbar-color:#c4cfbf_transparent] [scrollbar-width:thin] max-desktop:px-[19px] wide:px-7">
+              {sidebar}
+            </div>
+          )}
         </aside>
         <main aria-label="Interactive scouting map" className="relative min-w-0 flex-1 bg-map">
-          {load.status === 'loading' ? <MapLoading /> : <AtlasMap atlas={load.atlas} source={source} />}
+          {children}
         </main>
       </div>
     </div>
-  )
-}
-
-function AtlasMap({ atlas, source }: { atlas: Atlas; source: DataSource }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [boundary, setBoundary] = useState<FeatureCollection | null>(null)
-  const [layerError, setLayerError] = useState<DataError | null>(null)
-
-  useEffect(() => {
-    let active = true
-    loadGeoJsonLayer(source, atlas.manifest, 'boundary').then((result) => {
-      if (!active) return
-      if (result.ok) setBoundary(result.value)
-      else setLayerError(result.error)
-    })
-    return () => {
-      active = false
-    }
-  }, [atlas, source])
-
-  const layers = useMemo(() => {
-    const raster = atlas.manifest.layers[BASE_RASTER]
-    const next: MapLayer[] = []
-    if (raster?.type === 'raster') {
-      next.push({ key: BASE_RASTER, kind: 'raster', url: resolveUrl(source, raster.url), bounds: raster.bounds })
-    }
-    if (boundary) next.push({ key: 'boundary', kind: 'geojson', data: boundary })
-    return next
-  }, [atlas, source, boundary])
-
-  const selected = atlas.candidates.find((candidate) => candidate.properties.id === selectedId)
-  const notices = [...atlas.warnings, ...(layerError ? [layerError] : [])]
-
-  return (
-    <>
-      <MapView
-        extent={atlas.manifest.bounds}
-        layers={layers}
-        candidates={atlas.candidates}
-        selectedId={selectedId}
-        onCandidateClick={setSelectedId}
-      />
-      {notices.length > 0 && (
-        <div
-          role="status"
-          className="absolute top-5 left-[23px] z-[600] max-w-[430px] rounded-[5px] border border-alert-line bg-alert px-3.5 py-2.5 text-[11px] text-alert-text shadow-panel max-tablet:inset-x-3 max-tablet:top-3"
-        >
-          {notices.map((notice) => (
-            <p key={notice.file}>Couldn’t load {formatDataError(notice)}</p>
-          ))}
-        </div>
-      )}
-      {selected && <CandidateCard candidate={selected} onClose={() => setSelectedId(null)} />}
-    </>
   )
 }
 
