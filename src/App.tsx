@@ -11,6 +11,7 @@ import { useFieldLog } from './fieldLog/useFieldLog.ts'
 import { CandidateDetail } from './ui/CandidateDetail.tsx'
 import { cardId, CandidateList, FIELD_STATUS_FILTER_ID } from './ui/CandidateList.tsx'
 import { CanopyReadout } from './ui/CanopyReadout.tsx'
+import { ExportMenu } from './ui/ExportMenu.tsx'
 import { FatalError } from './ui/FatalError.tsx'
 import { FieldLogNotices } from './ui/FieldLogNotices.tsx'
 import { FieldLogTools } from './ui/FieldLogTools.tsx'
@@ -39,7 +40,7 @@ export function App({ source, storage }: { source: DataSource; storage: Storage 
   if (load.status === 'failed') return <FatalError error={load.error} />
   if (load.status === 'loading') {
     return (
-      <Layout atlas={null} sidebar={null}>
+      <Layout atlas={null} sidebar={null} exportMenu={<ExportMenu visible={null} log={{}} />}>
         <MapLoading />
       </Layout>
     )
@@ -178,6 +179,7 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
   return (
     <Layout
       atlas={atlas}
+      exportMenu={<ExportMenu visible={visible} log={fieldLog.log} />}
       sidebar={
         <SidebarTabs
           // A shared view is about candidates, so its link opens on their list.
@@ -290,10 +292,10 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
 }
 
 /** The page frame. The atlas is null while it loads, which keeps the method button disabled. */
-function Layout({ atlas, sidebar, children }: { atlas: Atlas | null; sidebar: ReactNode; children: ReactNode }) {
+function Layout({ atlas, sidebar, exportMenu, children }: { atlas: Atlas | null; sidebar: ReactNode; exportMenu: ReactNode; children: ReactNode }) {
   return (
     <div className="flex h-full flex-col">
-      <Topbar atlas={atlas} />
+      <Topbar atlas={atlas} exportMenu={exportMenu} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside
           aria-label="Map controls"
@@ -405,7 +407,7 @@ function MapLoading() {
   )
 }
 
-function Topbar({ atlas }: { atlas: Atlas | null }) {
+function Topbar({ atlas, exportMenu }: { atlas: Atlas | null; exportMenu: ReactNode }) {
   const [methodOpen, setMethodOpen] = useState(false)
   return (
     <header className="relative z-[1100] flex h-[86px] flex-none items-center gap-6 bg-ink px-7 text-topbar-text max-desktop:gap-4 max-desktop:px-5 max-tablet:h-[72px] max-tablet:gap-[11px] max-tablet:px-[15px]">
@@ -445,6 +447,7 @@ function Topbar({ atlas }: { atlas: Atlas | null }) {
         </span>
         <span className="text-[11px] text-topbar-muted max-desktop:hidden">Occupancy assumed for planning</span>
       </div>
+      {exportMenu}
     </header>
   )
 }
