@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useRef } from 'react'
+import type { LatLng } from '../atlas/canopy.ts'
 import type { Candidate, LeafletBounds } from '../atlas/schemas.ts'
 import { createMapAdapter, type MapAdapter, type MapLayer } from './mapAdapter.ts'
 
@@ -8,20 +9,25 @@ interface MapViewProps {
   candidates: readonly Candidate[]
   selectedId: string | null
   onCandidateClick(id: string): void
+  onProbe(point: LatLng | null): void
 }
 
 /**
  * Owns the map adapter's lifecycle: created once on mount, removed on
  * unmount. Prop changes become adapter commands; they never re-create the map.
  */
-export function MapView({ extent, layers, candidates, selectedId, onCandidateClick }: MapViewProps) {
+export function MapView({ extent, layers, candidates, selectedId, onCandidateClick, onProbe }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
   const adapter = useRef<MapAdapter | null>(null)
   const candidateClicked = useEffectEvent((id: string) => onCandidateClick(id))
+  const probed = useEffectEvent((point: LatLng | null) => onProbe(point))
 
   useEffect(() => {
     if (!container.current) return
-    const map = createMapAdapter(container.current, { onCandidateClick: (id) => candidateClicked(id) })
+    const map = createMapAdapter(container.current, {
+      onCandidateClick: (id) => candidateClicked(id),
+      onProbe: (point) => probed(point),
+    })
     adapter.current = map
     return () => {
       map.destroy()

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { LatLng } from './atlas/canopy.ts'
 import { type Atlas, type DataError, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, resolveUrl } from './atlas/data.ts'
 import type { FeatureCollection } from './atlas/schemas.ts'
 import type { MapLayer } from './map/mapAdapter.ts'
 import { MapView } from './map/MapView.tsx'
 import { CandidateCard } from './ui/CandidateCard.tsx'
+import { CanopyReadout } from './ui/CanopyReadout.tsx'
 import { FatalError } from './ui/FatalError.tsx'
 
 type Load = { status: 'loading' } | { status: 'failed'; error: DataError } | { status: 'ready'; atlas: Atlas }
@@ -53,6 +55,7 @@ function AtlasMap({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [boundary, setBoundary] = useState<FeatureCollection | null>(null)
   const [layerError, setLayerError] = useState<DataError | null>(null)
+  const [probe, setProbe] = useState<LatLng | null>(null)
 
   useEffect(() => {
     let active = true
@@ -87,7 +90,9 @@ function AtlasMap({ atlas, source }: { atlas: Atlas; source: DataSource }) {
         candidates={atlas.candidates}
         selectedId={selectedId}
         onCandidateClick={setSelectedId}
+        onProbe={setProbe}
       />
+      <CanopyReadout source={source} manifest={atlas.manifest} point={probe} />
       {notices.length > 0 && (
         <div
           role="status"
