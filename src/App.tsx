@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import type { LatLng } from './atlas/canopy.ts'
 import { type Atlas, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, MANIFEST_URL, resolveUrl } from './atlas/data.ts'
 import type { DataError } from './atlas/data.ts'
 import type { FeatureCollection } from './atlas/schemas.ts'
@@ -7,6 +8,7 @@ import type { MapLayer } from './map/mapAdapter.ts'
 import { type MapHandle, MapView } from './map/MapView.tsx'
 import { CandidateDetail } from './ui/CandidateDetail.tsx'
 import { cardId, CandidateList } from './ui/CandidateList.tsx'
+import { CanopyReadout } from './ui/CanopyReadout.tsx'
 import { FatalError } from './ui/FatalError.tsx'
 import { LayerControls } from './ui/LayerControls.tsx'
 import { initialLayerState, LAYERS, layerReducer } from './ui/layerState.ts'
@@ -53,6 +55,7 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   const [selection, setSelection] = useState<{ id: string; opener: Opener } | null>(null)
   const map = useRef<MapHandle>(null)
   const [zoom, setZoom] = useState<number | null>(null)
+  const [probe, setProbe] = useState<LatLng | null>(null)
   const [legendOpen, setLegendOpen] = useState(true)
   // The attempt each layer last started fetching, so an attempt is fetched once.
   const requested = useRef(new Map<string, number>())
@@ -147,7 +150,9 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
         onLayerLoad={(key, attempt) => dispatch({ type: 'loaded', key, attempt })}
         onLayerError={(key, attempt) => dispatch({ type: 'failed', key, attempt, reason: 'the image couldn’t be loaded' })}
         onZoomChange={setZoom}
+        onProbe={setProbe}
       />
+      <CanopyReadout source={source} manifest={manifest} point={probe} />
       {atlas.warnings.length > 0 && (
         <div
           role="status"

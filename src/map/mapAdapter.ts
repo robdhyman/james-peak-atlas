@@ -36,6 +36,8 @@ export interface MapEvents {
   /** A raster's image failed to load, for the layer spec with this revision. */
   onLayerError(key: string, revision: number): void
   onZoomChange(zoom: number): void
+  /** The point under the pointer, or the last tap or click; null once the pointer leaves the map. */
+  onProbe(point: { lat: number; lng: number } | null): void
 }
 
 export interface MapAdapter {
@@ -79,6 +81,16 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   map.attributionControl.addAttribution('USGS · USFS · NHD · NLCD')
   for (const [name, zIndex] of Object.entries(PANES)) map.createPane(name).style.zIndex = String(zIndex)
   map.getPane('contourLabels')!.style.pointerEvents = 'none'
+  // The probe listens on the container, not through the map's mousemove:
+  // the canvas renderer swallows its element's events and re-fires them at
+  // most every 32 ms, which can drop the last move before the pointer stops.
+  // Touch has no hover, so a tap (Leaflet's click, not on a marker or a
+  // control) probes too.
+  const probing = new AbortController()
+  const probeAt = ({ lat, lng }: L.LatLng) => events.onProbe({ lat, lng })
+  container.addEventListener('mousemove', (event) => probeAt(map.mouseEventToLatLng(event)), { signal: probing.signal })
+  container.addEventListener('mouseleave', () => events.onProbe(null), { signal: probing.signal })
+  map.on('click', ({ latlng }: L.LeafletMouseEvent) => probeAt(latlng))
 
   const built = new Map<string, { spec: MapLayer; layer: L.Layer }>()
   const markers = new Map<string, L.Marker>()
@@ -274,6 +286,7 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
 
     destroy() {
       clearTimeout(contourTimer)
+      probing.abort()
       map.remove()
       built.clear()
       markers.clear()

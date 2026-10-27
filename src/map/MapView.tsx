@@ -1,4 +1,5 @@
 import { type Ref, useEffect, useEffectEvent, useImperativeHandle, useRef } from 'react'
+import type { LatLng } from '../atlas/canopy.ts'
 import type { Candidate, LeafletBounds } from '../atlas/schemas.ts'
 import { createMapAdapter, type MapAdapter, type MapEvents, type MapLayer } from './mapAdapter.ts'
 
@@ -26,6 +27,7 @@ export function MapView({ extent, layers, overlayOpacity, candidates, selectedId
   const layerLoaded = useEffectEvent((key: string, revision: number) => handlers.onLayerLoad(key, revision))
   const layerFailed = useEffectEvent((key: string, revision: number) => handlers.onLayerError(key, revision))
   const zoomChanged = useEffectEvent((zoom: number) => handlers.onZoomChange(zoom))
+  const probed = useEffectEvent((point: LatLng | null) => handlers.onProbe(point))
 
   useEffect(() => {
     if (!container.current) return
@@ -34,6 +36,7 @@ export function MapView({ extent, layers, overlayOpacity, candidates, selectedId
       onLayerLoad: (key, revision) => layerLoaded(key, revision),
       onLayerError: (key, revision) => layerFailed(key, revision),
       onZoomChange: (zoom) => zoomChanged(zoom),
+      onProbe: (point) => probed(point),
     })
     adapter.current = map
     return () => {
