@@ -184,6 +184,12 @@ async function loadManifest(source: DataSource): Promise<Result<Manifest>> {
   const origin = checkLonLat(manifest.origin.coordinates)
   if (origin) return fail(MANIFEST_URL, 'origin', origin)
 
+  for (const [index, { name, url }] of manifest.sources.entries()) {
+    if (url !== undefined && !isExternalUrl(url)) {
+      return fail(MANIFEST_URL, `sources[${index}] (${name})`, `${url} is not an absolute http(s) link`)
+    }
+  }
+
   return result
 }
 
@@ -312,6 +318,11 @@ function checkRelativeUrl(url: string): string | null {
   if (url.startsWith('/')) return `"${url}" starts from the site root; it must be relative to the site base`
   if (url.split(/[/\\]/).includes('..')) return `"${url}" leaves the site base`
   return null
+}
+
+/** Source citations point off-site, the opposite of data URLs. */
+function isExternalUrl(url: string): boolean {
+  return URL.canParse(url) && /^https?:$/.test(new URL(url).protocol)
 }
 
 async function loadFile<S extends z.ZodType>(

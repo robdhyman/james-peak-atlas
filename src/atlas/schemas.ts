@@ -26,6 +26,14 @@ const GeoJsonLayer = z.looseObject({
   label: z.string(),
 })
 
+/** A cited dataset. A source without an external link can't be checked, so it isn't cited. */
+const Source = z.looseObject({
+  name: z.string(),
+  url: z.string().optional(),
+  vintage: z.string(),
+  note: z.string(),
+})
+
 export const Manifest = z.looseObject({
   title: z.string(),
   bounds: LeafletBounds,
@@ -36,12 +44,21 @@ export const Manifest = z.looseObject({
   observations: z.string(),
   canopy_grid: z.string(),
   method: z.string(),
+  sources: z.array(Source),
   constraints: z.looseObject({ roundtrip_miles: finite.positive() }),
 })
 
-const Component = z.looseObject({ weight: finite.min(0).max(1) })
+const Component = z.looseObject({
+  weight: finite.min(0).max(1),
+  meaning: z.string(),
+  description: z.string(),
+  formula: z.string(),
+})
 
 export const Method = z.looseObject({
+  planning_year: z.int(),
+  scenario: z.string(),
+  occupancy_assumption: z.string(),
   components: z.looseObject({ water: Component, shelter: Component, darkness: Component, security: Component }),
   selection: z.looseObject({
     min_candidate_canopy_percent: finite,
@@ -49,7 +66,13 @@ export const Method = z.looseObject({
     min_distance_to_perennial_water_m: finite,
     max_distance_to_perennial_water_m: finite,
     min_distance_to_mapped_access_m: finite,
+    nearby_pool: z.string(),
+    wilderness_context_pool: z.string(),
   }),
+  route_limits: z.looseObject({ reason: z.string() }),
+  required_field_checks: z.array(z.string()),
+  distance_uncertainty: z.string(),
+  source_vintages: z.record(z.string(), z.string()),
 })
 
 export const COMPONENTS = ['water', 'shelter', 'darkness', 'security'] as const

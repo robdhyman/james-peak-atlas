@@ -5,6 +5,7 @@ import type { MapLayer } from './map/mapAdapter.ts'
 import { MapView } from './map/MapView.tsx'
 import { CandidateCard } from './ui/CandidateCard.tsx'
 import { FatalError } from './ui/FatalError.tsx'
+import { MethodDialog } from './ui/MethodDialog.tsx'
 
 type Load = { status: 'loading' } | { status: 'failed'; error: DataError } | { status: 'ready'; atlas: Atlas }
 
@@ -28,7 +29,7 @@ export function App({ source }: { source: DataSource }) {
 
   return (
     <div className="flex h-full flex-col">
-      <Topbar />
+      <Topbar atlas={load.status === 'ready' ? load.atlas : null} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside
           aria-label="Map controls"
@@ -113,7 +114,8 @@ function MapLoading() {
   )
 }
 
-function Topbar() {
+function Topbar({ atlas }: { atlas: Atlas | null }) {
+  const [methodOpen, setMethodOpen] = useState(false)
   return (
     <header className="relative z-[1100] flex h-[86px] flex-none items-center gap-6 bg-ink px-7 text-topbar-text max-desktop:gap-4 max-desktop:px-5 max-tablet:h-[72px] max-tablet:gap-[11px] max-tablet:px-[15px]">
       <div className="flex flex-none items-center gap-[13px]">
@@ -132,7 +134,20 @@ function Topbar() {
           </h1>
         </div>
       </div>
-      <div className="ml-auto flex flex-col items-end gap-1.5">
+      <button
+        type="button"
+        disabled={!atlas}
+        aria-haspopup="dialog"
+        onClick={() => setMethodOpen(true)}
+        className="ml-auto flex flex-none items-center gap-[7px] py-2 text-[12px] text-topbar-text disabled:opacity-50"
+      >
+        <span aria-hidden="true" className="grid size-[15px] place-items-center rounded-full border border-topbar-muted font-display text-[11px]">
+          i
+        </span>
+        <span className="max-tablet:sr-only">Method and sources</span>
+      </button>
+      {atlas && methodOpen && <MethodDialog atlas={atlas} onClose={() => setMethodOpen(false)} />}
+      <div className="flex flex-col items-end gap-1.5">
         <span className="flex items-center gap-[7px] text-[10px] font-bold tracking-[.12em] text-scenario max-tablet:text-[8px] max-tablet:tracking-[.05em]">
           <span aria-hidden="true" className="size-1.5 rounded-full bg-amber-dot" />
           LOW WATER · 2027
