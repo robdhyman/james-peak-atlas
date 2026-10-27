@@ -104,6 +104,22 @@ test.describe('canopy inspector with a pointer', () => {
     await expect(readout(page)).toHaveCount(0)
   })
 
+  // Desktop, the narrower card below 1100 px, and a phone, where the readout fills the row.
+  for (const width of [1440, 1000, 390]) {
+    test(`at ${width} px the readout sits beside the Legend button, not over it`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await page.goto('./')
+      const map = (await page.getByTestId('map').boundingBox())!
+      await page.mouse.move(map.x + map.width / 2, map.y + map.height / 2)
+      await expect(readout(page).getByTestId('canopy-value')).toBeVisible()
+
+      const shown = (await readout(page).boundingBox())!
+      const legend = (await page.getByRole('button', { name: 'Legend', exact: true }).boundingBox())!
+      expect(shown.x + shown.width).toBeLessThanOrEqual(legend.x)
+      expect(shown.x).toBeGreaterThanOrEqual(map.x)
+    })
+  }
+
   test('a point on the map but off the display grid shows nothing', async ({ page }) => {
     await page.goto('./')
     await expect.poll(() => hillshade(page).evaluate((img: HTMLImageElement) => img.complete)).toBe(true)

@@ -152,7 +152,6 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
         onZoomChange={setZoom}
         onProbe={setProbe}
       />
-      <CanopyReadout source={source} manifest={manifest} point={probe} />
       {atlas.warnings.length > 0 && (
         <div
           role="status"
@@ -163,7 +162,9 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
           ))}
         </div>
       )}
-      <div className="pointer-events-none absolute top-5 right-[22px] z-[500] max-tablet:top-3 max-tablet:right-3">
+      {/* The canopy readout sits left of the Legend button; both stay beneath the detail card. */}
+      <div className="pointer-events-none absolute top-5 right-[22px] z-[640] flex items-start justify-end gap-2 max-tablet:inset-x-3 max-tablet:top-3">
+        <CanopyReadout source={source} manifest={manifest} point={probe} />
         <button
           type="button"
           onClick={() => setLegendOpen((open) => !open)}

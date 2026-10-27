@@ -51,12 +51,16 @@ export function CanopyReadout({ source, manifest, point }: { source: DataSource;
   )
 }
 
-/** Sits above the candidate card at its width; beneath it in z-order, so the card wins any overlap. */
+/**
+ * At the candidate card's width, in the map's top-right row beside the Legend
+ * button. Below 1100 px the note wraps to three lines, so it rises 8 px to
+ * clear the card. On phones it fills the row.
+ */
 function Panel({ children }: { children: ReactNode }) {
   return (
     <section
       aria-label="Canopy readout"
-      className="pointer-events-none absolute top-5 right-[23px] z-[640] flex w-[330px] items-center gap-3 rounded-[7px] border border-line-strong bg-sheet/95 px-3 py-2 shadow-panel max-desktop:top-3 max-desktop:right-[15px] max-desktop:w-[305px] max-tablet:inset-x-3 max-tablet:top-3 max-tablet:w-auto wide:w-[350px]"
+      className="pointer-events-none flex w-[330px] min-w-0 items-center gap-3 rounded-[7px] border border-line-strong bg-sheet/95 px-3 py-2 shadow-panel max-desktop:-mt-2 max-desktop:w-[305px] max-tablet:mt-0 max-tablet:w-auto max-tablet:flex-1 wide:w-[350px]"
     >
       {children}
     </section>
