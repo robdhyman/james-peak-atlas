@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-
-type Point = { lat: number; lng: number }
+import { hillshade, mapProjection, type Point } from './mapScreen.ts'
 
 // The centre of display-grid row 394, column 320, which reads 31%. Its
 // neighbours differ (north 22%, east 23%, west 0%), so a reading of 31%
@@ -10,53 +9,11 @@ const KNOWN: Point = { lat: 39.86176, lng: -105.688311 }
 const CELL_METRES = 38.978
 
 const readout = (page: Page) => page.getByRole('region', { name: 'Canopy readout' })
-const hillshade = (page: Page) => page.getByRole('main').locator('img.leaflet-image-layer')
 
-function mercator({ lat, lng }: Point) {
-  const R = 6378137
-  return { x: (R * lng * Math.PI) / 180, y: R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) }
-}
-
-/**
- * The hillshade's on-screen box once Leaflet has stopped moving it: the same
- * across three reads, and at least `minWidth` wide (a zoom in doubles it).
- */
-async function settledHillshadeBox(page: Page, minWidth = 0) {
-  const reads: string[] = []
-  await expect
-    .poll(
-      async () => {
-        const box = await hillshade(page).boundingBox()
-        reads.push(JSON.stringify(box))
-        const [a, b, c] = reads.slice(-3)
-        return !!box && box.width >= minWidth && reads.length >= 3 && a === b && b === c
-      },
-      { intervals: [100] },
-    )
-    .toBe(true)
-  return JSON.parse(reads.at(-1)!) as { x: number; y: number; width: number; height: number }
-}
-
-/**
- * Maps a point to the screen through the hillshade overlay, which Leaflet
- * draws linearly in EPSG:3857 between its bounds. Independent of the app's
- * own sampler: it only uses the manifest's bounds and the image's box.
- */
+/** The projection, plus how many screen pixels a display-grid pixel covers. */
 async function geometry(page: Page, minWidth = 0) {
-  const manifest = await (await page.request.get('data/manifest.json')).json()
-  const [[south, west], [north, east]] = manifest.layers.hillshade.bounds as [[number, number], [number, number]]
-  const sw = mercator({ lat: south, lng: west })
-  const ne = mercator({ lat: north, lng: east })
-  const box = await settledHillshadeBox(page, minWidth)
-  const scale = box.width / (ne.x - sw.x)
-  return {
-    width: box.width,
-    cellPixels: CELL_METRES * scale,
-    toScreen(point: Point) {
-      const { x, y } = mercator(point)
-      return { x: box.x + (x - sw.x) * scale, y: box.y + ((ne.y - y) / (ne.y - sw.y)) * box.height }
-    },
-  }
+  const projection = await mapProjection(page, minWidth)
+  return { ...projection, cellPixels: CELL_METRES * projection.scale }
 }
 
 /**

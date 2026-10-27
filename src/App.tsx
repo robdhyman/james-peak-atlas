@@ -15,7 +15,7 @@ import { ExportMenu } from './ui/ExportMenu.tsx'
 import { FatalError } from './ui/FatalError.tsx'
 import { FieldLogNotices } from './ui/FieldLogNotices.tsx'
 import { FieldLogTools } from './ui/FieldLogTools.tsx'
-import { LayerControls } from './ui/LayerControls.tsx'
+import { LayerControls, layerLabel } from './ui/LayerControls.tsx'
 import { initialLayerState, LAYERS, layerReducer } from './ui/layerState.ts'
 import { Legend } from './ui/Legend.tsx'
 import { MethodDialog } from './ui/MethodDialog.tsx'
@@ -105,7 +105,8 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
 
   const mapLayers = useMemo(
     () =>
-      LAYERS.flatMap(({ key }): MapLayer[] => {
+      LAYERS.flatMap((definition): MapLayer[] => {
+        const { key } = definition
         const entry = layerState.layers[key]
         const layer = manifest.layers[key]
         if (!entry?.on || !layer) return []
@@ -113,7 +114,7 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
           return [{ key, kind: 'raster', url: resolveUrl(source, layer.url), bounds: layer.bounds, revision: entry.attempt }]
         }
         const data = vectors[key]
-        return data && entry.status.kind === 'ready' ? [{ key, kind: 'geojson', data, revision: entry.attempt }] : []
+        return data && entry.status.kind === 'ready' ? [{ key, kind: 'geojson', data, revision: entry.attempt, label: layerLabel(definition, manifest) }] : []
       }),
     [layerState.layers, manifest, source, vectors],
   )

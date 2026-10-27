@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 import { BASE } from './vite.config.ts'
 
-const PORT = 4173
+// E2E_PORT lets parallel worktrees each serve their own build.
+const PORT = Number(process.env['E2E_PORT'] ?? 4173)
 
 export default defineConfig({
   testDir: 'tests/e2e',

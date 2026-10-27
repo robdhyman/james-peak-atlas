@@ -20,8 +20,8 @@ test.describe('data to map', () => {
     const hillshade = map.locator('img.leaflet-image-layer')
     await expect(hillshade).toHaveAttribute('src', /\/james-peak-atlas\/data\/hillshade\.png$/)
     await expect.poll(() => hillshade.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0)
-    // The boundary is drawn by Leaflet's canvas renderer in its own pane.
-    await expect(map.locator('.leaflet-boundaries-pane canvas')).toHaveCount(1)
+    // The boundary is drawn by Leaflet's canvas renderer, on the one canvas all vector layers share.
+    await expect(map.locator('.leaflet-vectors-pane canvas')).toHaveCount(1)
 
     // Georeferencing: every marker sits on the hillshade, which covers the
     // wilderness. Swapped [lat, lon] would put them far off the image.

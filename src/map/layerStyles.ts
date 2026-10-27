@@ -8,9 +8,7 @@ export const PANES = {
   official: 220,
   raster: 300,
   contours: 390,
-  water: 410,
-  access: 430,
-  boundaries: 450,
+  vectors: 430,
   contourLabels: 460,
   points: 610,
   observations: 615,
@@ -34,12 +32,20 @@ export function fixedRasterOpacity(key: string): number | null {
   return FIXED_RASTER_OPACITY[key] ?? null
 }
 
+/**
+ * Every vector layer but the contours shares the `vectors` pane, and so one
+ * canvas. A canvas takes every pointer event over its whole area, so with a
+ * pane each, the top one would block clicks on everything below it.
+ */
 export function vectorPane(key: string): Pane {
-  if (key === 'contours') return 'contours'
-  if (key === 'water') return 'water'
-  if (key === 'boundary' || key === 'gmu_boundaries') return 'boundaries'
-  return 'access'
+  return key === 'contours' ? 'contours' : 'vectors'
 }
+
+/** How the shared vector canvas stacks its layers, bottom to top: water under access, boundaries over both. */
+export const VECTOR_STACK: readonly string[] = ['water', 'ownership', 'trails', 'roads', 'boundary', 'gmu_boundaries']
+
+/** Extra pixels around a line that still count as a click on it; the lines are only 1.5–2.7 px wide. */
+export const VECTOR_CLICK_TOLERANCE = 5
 
 type Properties = Readonly<Record<string, unknown>> | null | undefined
 

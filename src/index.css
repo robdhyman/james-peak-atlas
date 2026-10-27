@@ -117,6 +117,46 @@
   padding: 5px 8px;
 }
 
+/* Markers are divs with role="button", so the base focus rule doesn't reach them. */
+.leaflet-marker-icon:focus-visible {
+  border-radius: 50%;
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Feature popups: a name, the metadata line, then the cautions. */
+.feature-popup .leaflet-popup-content-wrapper {
+  border-radius: 7px;
+  background: var(--color-sheet);
+  color: var(--color-ink);
+}
+
+.feature-popup .leaflet-popup-tip {
+  background: var(--color-sheet);
+}
+
+.feature-popup .leaflet-popup-content {
+  margin: 12px 16px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.feature-popup-title {
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.feature-popup-meta {
+  color: var(--color-ink-soft);
+  font-size: 11px;
+}
+
+.feature-popup-note {
+  color: var(--color-alert-text);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
 @layer components {
   /* The reference atlas's square layer switch: forest green when on. */
   .layer-checkbox {

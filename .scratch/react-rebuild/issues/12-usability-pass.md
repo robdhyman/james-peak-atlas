@@ -12,3 +12,7 @@
 - [ ] At 390 px, the sidebar works as a drawer and the detail panel sits over the map, matching the current atlas. Screenshots are captured as evidence.
 - [ ] With a layer deliberately failed, the app stays understandable: the control says what failed and the rest of the app works.
 - [ ] Any problems found are fixed in this ticket, or split into new tickets if they're large.
+
+## Comments
+
+**From 14 (feature popups):** trailhead, campground and spring markers are now in the tab order, before the candidate markers because of DOM pane order. Enter or Space opens their popup and Escape closes it. Popups aren't announced to screen readers yet. Every map marker now has the focus ring. See 14's comments.

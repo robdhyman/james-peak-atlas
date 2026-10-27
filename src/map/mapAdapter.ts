@@ -4,6 +4,7 @@
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Candidate, FeatureCollection, LeafletBounds, Observation } from '../atlas/schemas.ts'
+import { type FeaturePopup, featurePopup, POPUP_LAYERS } from './featurePopup.ts'
 import {
   fixedRasterOpacity,
   isIndexContour,
@@ -12,6 +13,8 @@ import {
   pathStyle,
   pointMarker,
   rasterPane,
+  VECTOR_CLICK_TOLERANCE,
+  VECTOR_STACK,
   vectorPane,
 } from './layerStyles.ts'
 
@@ -20,7 +23,14 @@ import {
  * scratch, e.g. to retry an image that failed to load.
  */
 export type MapLayer =
-  | { readonly key: string; readonly kind: 'geojson'; readonly data: FeatureCollection; readonly revision: number }
+  | {
+      readonly key: string
+      readonly kind: 'geojson'
+      readonly data: FeatureCollection
+      readonly revision: number
+      /** The layer's name, for a feature popup when the feature has no name of its own. */
+      readonly label: string
+    }
   | {
       readonly key: string
       readonly kind: 'raster'
@@ -88,6 +98,8 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   map.attributionControl.addAttribution('USGS · USFS · NHD · NLCD')
   for (const [name, zIndex] of Object.entries(PANES)) map.createPane(name).style.zIndex = String(zIndex)
   map.getPane('contourLabels')!.style.pointerEvents = 'none'
+  // One canvas for every vector layer but the contours (see vectorPane).
+  const vectorRenderer = L.canvas({ pane: 'vectors', tolerance: VECTOR_CLICK_TOLERANCE })
   // The probe listens on the container, not through the map's mousemove:
   // the canvas renderer swallows its element's events and re-fires them at
   // most every 32 ms, which can drop the last move before the pointer stops.
@@ -135,23 +147,59 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
         .on('load', () => events.onLayerLoad(key, revision))
         .on('error', () => events.onLayerError(key, revision))
     }
+    const pane = vectorPane(key)
+    const popups = POPUP_LAYERS.has(key)
+    const popupFor = (feature: GeoJSON.Feature) => featurePopup(key, feature.properties, spec.label)
     // Leaflet only reads the features; its types just don't say readonly.
-    return L.geoJSON(spec.data as unknown as GeoJSON.FeatureCollection, {
-      pane: vectorPane(key),
+    const data = spec.data as unknown as GeoJSON.FeatureCollection
+    return L.geoJSON(OUTLINED.has(key) ? outlines(data) : data, {
+      pane,
+      // Leaflet hands these options to every path it builds, renderer included.
+      ...(pane === 'vectors' ? { renderer: vectorRenderer } : {}),
       style: (feature) => pathStyle(key, feature?.properties, map.getZoom()),
-      interactive: false,
+      interactive: popups,
       pointToLayer: (feature, latlng) => {
         const { className, glyph } = pointMarker(key)
-        const name = (feature.properties as { name?: unknown } | null)?.name
-        return L.marker(latlng, {
+        const name = popupFor(feature)?.title
+        const marker = L.marker(latlng, {
           pane: 'points',
-          // These markers open nothing, so they stay out of the tab order.
-          keyboard: false,
-          ...(typeof name === 'string' ? { title: name } : {}),
+          // A marker is in the tab order only when it opens a popup.
+          keyboard: popups,
+          ...(name ? { title: name } : {}),
           icon: L.divIcon({ className, html: `<span>${glyph}</span>`, iconSize: [17, 17], iconAnchor: [8, 8] }),
         })
+        if (!popups) return marker
+        // Leaflet makes the icon a button but doesn't open its popup from the
+        // keyboard, as with the candidate markers. Escape closes it again.
+        return marker
+          .on('add', () => marker.getElement()?.setAttribute('aria-label', `${name}, ${spec.label}`))
+          .on('keydown', ({ originalEvent }: L.LeafletKeyboardEvent) => {
+            if (originalEvent.key === 'Escape' && marker.isPopupOpen()) {
+              originalEvent.stopPropagation()
+              marker.closePopup()
+            } else if (originalEvent.key === 'Enter' || originalEvent.key === ' ') {
+              originalEvent.preventDefault()
+              marker.openPopup()
+            }
+          })
       },
+      ...(popups
+        ? {
+            onEachFeature: (feature: GeoJSON.Feature, layer: L.Layer) => {
+              const popup = popupFor(feature)
+              if (popup) layer.bindPopup(() => popupElement(popup), { maxWidth: 250, className: 'feature-popup' })
+            },
+          }
+        : {}),
     })
+  }
+
+  /** Puts the shared vector canvas's layers back in VECTOR_STACK order; a layer added later would otherwise draw on top. */
+  function restackVectors() {
+    for (const key of VECTOR_STACK) {
+      const layer = built.get(key)?.layer
+      if (layer instanceof L.GeoJSON && map.hasLayer(layer)) layer.bringToFront()
+    }
   }
 
   function sameSource(a: MapLayer, b: MapLayer): boolean {
@@ -201,6 +249,7 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
       for (const [key, { layer }] of built) {
         if (!keys.has(key)) layer.remove()
       }
+      let added = false
       for (const spec of next) {
         let current = built.get(spec.key)
         if (!current || !sameSource(current.spec, spec)) {
@@ -208,8 +257,12 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
           current = { spec, layer: buildLayer(spec) }
           built.set(spec.key, current)
         }
-        if (!map.hasLayer(current.layer)) current.layer.addTo(map)
+        if (!map.hasLayer(current.layer)) {
+          current.layer.addTo(map)
+          added = true
+        }
       }
+      if (added) restackVectors()
       // What Leaflet is actually drawing, for anyone checking the map against the controls.
       container.dataset['drawnLayers'] = [...built]
         .filter(([, { layer }]) => map.hasLayer(layer))
@@ -324,6 +377,43 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
       markers.clear()
     },
   }
+}
+
+/**
+ * Layers drawn as their rings only. Their polygons are unfilled, but a canvas
+ * still counts a click anywhere inside one as a click on it, which would
+ * cover every trail and stream within a GMU.
+ */
+const OUTLINED: ReadonlySet<string> = new Set(['boundary', 'gmu_boundaries'])
+
+/** The same features, with each polygon's rings as lines. */
+function outlines(data: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+  return {
+    ...data,
+    features: data.features.map((feature) => {
+      const { geometry } = feature
+      if (geometry?.type === 'Polygon') return { ...feature, geometry: { type: 'MultiLineString', coordinates: geometry.coordinates } }
+      if (geometry?.type === 'MultiPolygon') {
+        return { ...feature, geometry: { type: 'MultiLineString', coordinates: geometry.coordinates.flat() } }
+      }
+      return feature
+    }),
+  }
+}
+
+/** A popup's content, built from text nodes so that no property value is ever read as HTML. */
+function popupElement({ title, meta, notes }: FeaturePopup): HTMLElement {
+  const root = document.createElement('div')
+  const line = (className: string, text: string) => {
+    const element = document.createElement('div')
+    element.className = className
+    element.textContent = text
+    root.append(element)
+  }
+  line('feature-popup-title', title)
+  if (meta) line('feature-popup-meta', meta)
+  for (const note of notes) line('feature-popup-note', note)
+  return root
 }
 
 /** `EP-04` → `E4`, `JP-10` → `J10`, as on the reference atlas's markers. */
