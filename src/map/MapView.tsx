@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from 'react'
+import { type Ref, useEffect, useEffectEvent, useImperativeHandle, useRef } from 'react'
 import type { Candidate, LeafletBounds } from '../atlas/schemas.ts'
 import { createMapAdapter, type MapAdapter, type MapEvents, type MapLayer } from './mapAdapter.ts'
 
@@ -9,13 +9,17 @@ interface MapViewProps extends MapEvents {
   overlayOpacity: number
   candidates: readonly Candidate[]
   selectedId: string | null
+  ref?: Ref<MapHandle>
 }
+
+/** One-off map commands that aren't state: React calls them from event handlers. */
+export type MapHandle = Pick<MapAdapter, 'reveal' | 'focusCandidate'>
 
 /**
  * Owns the map adapter's lifecycle: created once on mount, removed on
  * unmount. Prop changes become adapter commands; they never re-create the map.
  */
-export function MapView({ extent, layers, overlayOpacity, candidates, selectedId, ...handlers }: MapViewProps) {
+export function MapView({ extent, layers, overlayOpacity, candidates, selectedId, ref, ...handlers }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
   const adapter = useRef<MapAdapter | null>(null)
   const candidateClicked = useEffectEvent((id: string) => handlers.onCandidateClick(id))
@@ -37,6 +41,15 @@ export function MapView({ extent, layers, overlayOpacity, candidates, selectedId
       adapter.current = null
     }
   }, [])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      reveal: (id) => adapter.current?.reveal(id),
+      focusCandidate: (id) => adapter.current?.focusCandidate(id),
+    }),
+    [],
+  )
 
   useEffect(() => adapter.current?.fitTo(extent), [extent])
   // Opacity first, so layers built in the same commit start at the right strength.

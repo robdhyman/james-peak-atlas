@@ -48,6 +48,10 @@ export interface MapAdapter {
   setOverlayOpacity(opacity: number): void
   setCandidates(candidates: readonly Candidate[]): void
   select(id: string | null): void
+  /** Pans, zooming in if needed, so the candidate sits in view beside the detail panel. */
+  reveal(id: string): void
+  /** Moves keyboard focus to the candidate's marker. */
+  focusCandidate(id: string): void
   fitTo(bounds: LeafletBounds): void
   destroy(): void
 }
@@ -55,6 +59,11 @@ export interface MapAdapter {
 /** Contour labels are spaced on a grid of cells this size, in pixels, and capped. */
 const CONTOUR_LABEL_CELL = { x: 150, y: 110 } as const
 const MAX_CONTOUR_LABELS = 45
+
+/** Revealing a candidate zooms to at least this, and no closer than the max, as the reference atlas did. */
+const REVEAL_ZOOM = { min: 14, max: 15 } as const
+/** On wide screens the detail panel covers the map's right side, so the candidate sits this far left of centre. */
+const REVEAL_OFFSET_X = 140
 
 export function createMapAdapter(container: HTMLElement, events: MapEvents): MapAdapter {
   const map = L.map(container, {
@@ -237,6 +246,20 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
       if (selected) markSelected(selected, false)
       selected = id
       if (id) markSelected(id, true)
+    },
+
+    reveal(id) {
+      const latLng = markers.get(id)?.getLatLng()
+      if (!latLng) return
+      const zoom = Math.min(Math.max(map.getZoom(), REVEAL_ZOOM.min), REVEAL_ZOOM.max)
+      // Below the tablet breakpoint the panel is a bottom sheet, not beside the map.
+      const offset = window.matchMedia('(min-width: 50rem)').matches ? REVEAL_OFFSET_X : 0
+      const centre = map.unproject(map.project(latLng, zoom).add([offset, 0]), zoom)
+      map.setView(centre, zoom, { animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches })
+    },
+
+    focusCandidate(id) {
+      markers.get(id)?.getElement()?.focus()
     },
 
     fitTo([[south, west], [north, east]]) {

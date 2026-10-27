@@ -52,7 +52,11 @@ export const Manifest = z.looseObject({
   observations: z.string(),
   canopy_grid: z.string(),
   method: z.string(),
-  constraints: z.looseObject({ roundtrip_miles: finite.positive() }),
+  constraints: z.looseObject({
+    roundtrip_miles: finite.positive(),
+    gain_ft: finite.positive().optional(),
+    vehicle: z.string().optional(),
+  }),
 })
 
 const Component = z.looseObject({ weight: finite.min(0).max(1) })
@@ -89,7 +93,15 @@ const CandidateProperties = z.looseObject({
     canopy_percent: finite,
     slope_deg: finite,
     roundtrip_lower_bound_miles: finite.nonnegative(),
+    elevation_ft: finite,
+    nearby_steep_terrain_percent: finite.min(0).max(100),
   }),
+  rationale: z.array(z.string()),
+  cautions: z.array(z.string()),
+  /** Retained provenance; not every release carries it. */
+  field_checks: z.array(z.string()).optional(),
+  route_status: z.string(),
+  gmu: z.string(),
 })
 
 const PointFeature = <P extends z.ZodType>(properties: P) =>

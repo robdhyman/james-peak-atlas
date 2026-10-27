@@ -1,20 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { describe, expect, test } from 'vitest'
 import { type DataSource, formatDataError, loadAtlas, loadCanopyGrid, loadGeoJsonLayer } from './data.ts'
-
-const PUBLIC = new URL('../../public/', import.meta.url)
-
-/** Serves the real bundle from disk, as the site serves it under its base. */
-const bundle: DataSource = {
-  base: PUBLIC,
-  fetch: async (url) => {
-    try {
-      return new Response(await readFile(new URL(url)))
-    } catch {
-      return new Response(null, { status: 404 })
-    }
-  },
-}
+import { bundle, PUBLIC } from './testing/bundle.ts'
 
 type Json = Record<string, any>
 

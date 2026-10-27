@@ -1,10 +1,12 @@
-import { type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { type Atlas, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, MANIFEST_URL, resolveUrl } from './atlas/data.ts'
 import type { DataError } from './atlas/data.ts'
 import type { FeatureCollection } from './atlas/schemas.ts'
+import { type ListView, visibleCandidates } from './candidates/visibleList.ts'
 import type { MapLayer } from './map/mapAdapter.ts'
-import { MapView } from './map/MapView.tsx'
-import { CandidateCard } from './ui/CandidateCard.tsx'
+import { type MapHandle, MapView } from './map/MapView.tsx'
+import { CandidateDetail } from './ui/CandidateDetail.tsx'
+import { cardId, CandidateList } from './ui/CandidateList.tsx'
 import { FatalError } from './ui/FatalError.tsx'
 import { LayerControls } from './ui/LayerControls.tsx'
 import { initialLayerState, LAYERS, layerReducer } from './ui/layerState.ts'
@@ -36,12 +38,20 @@ export function App({ source }: { source: DataSource }) {
   return <AtlasView atlas={load.atlas} source={source} />
 }
 
-/** The loaded atlas. Its root owns the layer state: what's on, overlay strength, and each layer's status. */
+/** Where the open detail panel was opened from, so closing it can hand focus back. */
+type Opener = 'list' | 'map'
+
+/**
+ * The loaded atlas. Its root owns the layer state (what's on, overlay
+ * strength, and each layer's status), the list view and the selection.
+ */
 function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   const { manifest } = atlas
   const [layerState, dispatch] = useReducer(layerReducer, undefined, initialLayerState)
   const [vectors, setVectors] = useState<Readonly<Record<string, FeatureCollection>>>({})
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [view, setView] = useState<ListView>({ scope: 'nearby', sort: null, search: '' })
+  const [selection, setSelection] = useState<{ id: string; opener: Opener } | null>(null)
+  const map = useRef<MapHandle>(null)
   const [zoom, setZoom] = useState<number | null>(null)
   const [legendOpen, setLegendOpen] = useState(true)
   // The attempt each layer last started fetching, so an attempt is fetched once.
@@ -85,17 +95,55 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
     [layerState.layers, manifest, source, vectors],
   )
 
-  const selected = atlas.candidates.find((candidate) => candidate.properties.id === selectedId)
+  // The one visible list, for the cards and the markers alike.
+  const visible = useMemo(() => visibleCandidates(atlas.candidates, view), [atlas.candidates, view])
+  const markers = useMemo(() => visible.map(({ candidate }) => candidate), [visible])
+  const pools = useMemo(() => new Set(visible.map(({ pool }) => pool)), [visible])
+
+  // A candidate that leaves the visible list takes its detail panel with it.
+  const selected = selection ? visible.find(({ candidate }) => candidate.properties.id === selection.id)?.candidate : undefined
+  if (selection && !selected) setSelection(null)
+  const selectedId = selected ? selected.properties.id : null
+
+  function selectFromList(id: string) {
+    setSelection({ id, opener: 'list' })
+    map.current?.reveal(id)
+  }
+
+  function closeDetail() {
+    if (!selection) return
+    setSelection(null)
+    if (selection.opener === 'list') document.getElementById(cardId(selection.id))?.focus()
+    else map.current?.focusCandidate(selection.id)
+  }
 
   return (
-    <Layout sidebar={<LayerControls manifest={manifest} state={layerState} dispatch={dispatch} />}>
+    <Layout
+      sidebar={
+        <SidebarTabs
+          candidateCount={visible.length}
+          layers={<LayerControls manifest={manifest} state={layerState} dispatch={dispatch} />}
+          candidates={
+            <CandidateList
+              manifest={manifest}
+              view={view}
+              visible={visible}
+              selectedId={selectedId}
+              onViewChange={setView}
+              onSelect={selectFromList}
+            />
+          }
+        />
+      }
+    >
       <MapView
+        ref={map}
         extent={manifest.bounds}
         layers={mapLayers}
         overlayOpacity={layerState.opacity / 100}
-        candidates={atlas.candidates}
+        candidates={markers}
         selectedId={selectedId}
-        onCandidateClick={setSelectedId}
+        onCandidateClick={(id) => setSelection({ id, opener: 'map' })}
         onLayerLoad={(key, attempt) => dispatch({ type: 'loaded', key, attempt })}
         onLayerError={(key, attempt) => dispatch({ type: 'failed', key, attempt, reason: 'the image couldn’t be loaded' })}
         onZoomChange={setZoom}
@@ -126,12 +174,13 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
           manifest={manifest}
           state={layerState}
           zoom={zoom}
+          pools={pools}
           onClose={() => setLegendOpen(false)}
           // On a phone the open detail card takes the legend's place.
           className={selected ? 'max-tablet:hidden' : ''}
         />
       )}
-      {selected && <CandidateCard candidate={selected} onClose={() => setSelectedId(null)} />}
+      {selected && <CandidateDetail candidate={selected} manifest={manifest} method={atlas.method} onClose={closeDetail} />}
     </Layout>
   )
 }
@@ -151,17 +200,78 @@ function Layout({ sidebar, children }: { sidebar: ReactNode; children: ReactNode
               Find the next place worth a walk.
             </p>
           </div>
-          {sidebar && (
-            <div className="min-h-0 flex-1 overflow-auto border-t border-line px-[23px] pt-[19px] pb-5 [scrollbar-color:#c4cfbf_transparent] [scrollbar-width:thin] max-desktop:px-[19px] wide:px-7">
-              {sidebar}
-            </div>
-          )}
+          {sidebar}
         </aside>
         <main aria-label="Interactive scouting map" className="relative min-w-0 flex-1 bg-map">
           {children}
         </main>
       </div>
     </div>
+  )
+}
+
+type Tab = 'layers' | 'candidates'
+
+/** The sidebar's two panels, as ARIA tabs: arrow keys move between them. */
+function SidebarTabs({ layers, candidates, candidateCount }: { layers: ReactNode; candidates: ReactNode; candidateCount: number }) {
+  const [tab, setTab] = useState<Tab>('layers')
+  const tabs: readonly [key: Tab, label: ReactNode][] = [
+    ['layers', 'Map layers'],
+    [
+      'candidates',
+      <>
+        Candidates{' '}
+        <span data-testid="candidate-count" className="ml-1 rounded-[4px] bg-[#e6ebdf] px-[5px] py-0.5 text-[10px]">
+          {candidateCount}
+        </span>
+      </>,
+    ],
+  ]
+
+  function moveWithArrows(event: KeyboardEvent) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    const next: Tab = tab === 'layers' ? 'candidates' : 'layers'
+    setTab(next)
+    document.getElementById(`${next}-tab`)?.focus()
+  }
+
+  return (
+    <>
+      <div
+        role="tablist"
+        aria-label="Atlas panels"
+        onKeyDown={moveWithArrows}
+        className="flex flex-none gap-[27px] border-y border-line px-[23px] max-desktop:px-[19px] wide:px-7"
+      >
+        {tabs.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            id={`${key}-tab`}
+            aria-selected={tab === key}
+            aria-controls={`${key}-panel`}
+            tabIndex={tab === key ? 0 : -1}
+            onClick={() => setTab(key)}
+            className="border-b-2 border-transparent pt-[13px] pb-[11px] text-[12px] font-semibold text-[#66756c] aria-selected:border-ink aria-selected:text-ink"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tabs.map(([key]) => (
+        <div
+          key={key}
+          role="tabpanel"
+          id={`${key}-panel`}
+          aria-labelledby={`${key}-tab`}
+          hidden={tab !== key}
+          className="min-h-0 flex-1 overflow-auto px-[23px] pt-[19px] pb-5 [scrollbar-color:#c4cfbf_transparent] [scrollbar-width:thin] max-desktop:px-[19px] wide:px-7"
+        >
+          {key === 'layers' ? layers : candidates}
+        </div>
+      ))}
+    </>
   )
 }
 

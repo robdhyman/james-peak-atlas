@@ -1,4 +1,4 @@
-import type { Manifest, RasterLegend } from '../atlas/schemas.ts'
+import type { Manifest, Pool, RasterLegend } from '../atlas/schemas.ts'
 import { MINOR_CONTOUR_MIN_ZOOM } from '../map/layerStyles.ts'
 import { layerLabel } from './LayerControls.tsx'
 import { LAYERS, type LayerDefinition, type LayerState } from './layerState.ts'
@@ -7,12 +7,14 @@ interface LegendProps {
   manifest: Manifest
   state: LayerState
   zoom: number | null
+  /** The pools with markers on the map. */
+  pools: ReadonlySet<Pool>
   onClose(): void
   className?: string
 }
 
 /** Lists what's on the map now: each drawn layer, then the candidate markers. */
-export function Legend({ manifest, state, zoom, onClose, className = '' }: LegendProps) {
+export function Legend({ manifest, state, zoom, pools, onClose, className = '' }: LegendProps) {
   const shown = LAYERS.filter(({ key }) => {
     const entry = state.layers[key]
     return entry?.on && entry.status.kind === 'ready'
@@ -36,14 +38,18 @@ export function Legend({ manifest, state, zoom, onClose, className = '' }: Legen
         {shown.map((definition) => (
           <LegendEntry key={definition.key} definition={definition} manifest={manifest} zoom={zoom} />
         ))}
-        <li className="my-1.5 flex items-center gap-[9px]">
-          <span aria-hidden="true" className="mx-1 size-3 flex-none rounded-full border-2 border-[#fff8e9] bg-marker shadow-[0_0_0_1px_var(--color-marker-ring)]" />
-          Nearby candidate
-        </li>
-        <li className="my-1.5 flex items-center gap-[9px]">
-          <span aria-hidden="true" className="mx-1 size-3 flex-none rounded-full border-2 border-sheet bg-marker-context shadow-[0_0_0_1px_#c9bf9f]" />
-          Wilderness context candidate
-        </li>
+        {pools.has('nearby') && (
+          <li className="my-1.5 flex items-center gap-[9px]">
+            <span aria-hidden="true" className="mx-1 size-3 flex-none rounded-full border-2 border-[#fff8e9] bg-marker shadow-[0_0_0_1px_var(--color-marker-ring)]" />
+            Nearby candidate
+          </li>
+        )}
+        {pools.has('wilderness_context') && (
+          <li className="my-1.5 flex items-center gap-[9px]">
+            <span aria-hidden="true" className="mx-1 size-3 flex-none rounded-full border-2 border-sheet bg-marker-context shadow-[0_0_0_1px_#c9bf9f]" />
+            Wilderness context candidate
+          </li>
+        )}
       </ul>
     </section>
   )

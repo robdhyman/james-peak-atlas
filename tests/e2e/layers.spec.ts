@@ -100,9 +100,9 @@ test.describe('evidence layers', () => {
     await preset(page, 'Quiet cover').click()
     await expect.poll(() => drawn(page)).toEqual(QUIET_COVER)
 
-    // The candidates and their scores are untouched.
+    // The candidates and their scores are untouched: still the six Nearby markers.
     const markers = page.getByRole('button', { name: /^(EP|JP)-\d\d: / })
-    await expect(markers).toHaveCount(16)
+    await expect(markers).toHaveCount(6)
     await expect(page.getByRole('button', { name: /^EP-04: / })).toHaveAccessibleName(/scouting index 72 \/ 100$/)
 
     // A preset also turns off what it doesn't include.
@@ -124,7 +124,6 @@ test.describe('evidence layers', () => {
       'Terrain relief',
       'Mapped water',
       'Nearby candidate',
-      'Wilderness context candidate',
     ])
     await expect(legend(page).getByTestId('contour-zoom-note')).toHaveText(
       'Only the 200 ft lines show at this zoom. Zoom in to see every 40 ft contour.',
@@ -189,7 +188,7 @@ test.describe('layer failure', () => {
     // Only trails failed: no full-screen error, and the rest of the atlas works.
     await expect(page.getByRole('alert')).toHaveCount(0)
     await expect.poll(() => drawn(page)).toEqual(TERRAIN.filter((key) => key !== 'trails'))
-    await expect(page.getByRole('button', { name: /^(EP|JP)-\d\d: / })).toHaveCount(16)
+    await expect(page.getByRole('button', { name: /^(EP|JP)-\d\d: / })).toHaveCount(6)
 
     await page.unroute('**/james-peak-atlas/data/trails.geojson')
     await trails.getByRole('button', { name: 'Retry Trails' }).click()

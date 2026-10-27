@@ -3,11 +3,18 @@ import { expect, test, type Page } from '@playwright/test'
 const marker = (page: Page, id: string) => page.getByRole('button', { name: new RegExp(`^${id}: `) })
 const card = (page: Page) => page.getByRole('region').filter({ hasText: 'SCOUTING CANDIDATE' })
 
+/** Switches the list, and so the markers, to both pools. */
+async function showAll(page: Page) {
+  await page.getByRole('tab', { name: /^Candidates/ }).click()
+  await page.getByRole('group', { name: 'Scope' }).getByRole('button', { name: 'All' }).click()
+}
+
 test.describe('data to map', () => {
   test('draws the hillshade, the wilderness boundary and 16 candidate markers over the same ground', async ({ page }) => {
     await page.goto('./')
     const map = page.getByRole('main', { name: 'Interactive scouting map' })
 
+    await showAll(page)
     await expect(map.getByRole('button', { name: /^(EP|JP)-\d\d: / })).toHaveCount(16)
 
     const hillshade = map.locator('img.leaflet-image-layer')
@@ -38,6 +45,7 @@ test.describe('data to map', () => {
 
   test('clicking a marker opens its detail card, without re-creating the map', async ({ page }) => {
     await page.goto('./')
+    await showAll(page)
     await expect(marker(page, 'EP-04')).toBeVisible()
     // Tag the live map element; a re-created map would lose the tag.
     await page.locator('.leaflet-container').evaluate((el) => el.setAttribute('data-original', ''))
@@ -46,13 +54,13 @@ test.describe('data to map', () => {
     await expect(card(page)).toContainText('SCOUTING CANDIDATE · EP-04')
     await expect(card(page).getByRole('heading', { level: 2 })).toHaveText('East Portal scout 4 — Unnamed mapped stream')
     await expect(card(page).getByTestId('scouting-index')).toHaveText('72 / 100')
-    await expect(card(page).getByTestId('pool')).toHaveText('Nearby')
+    await expect(card(page).getByTestId('pool')).toHaveText('Nearby #4')
     await expect(marker(page, 'EP-04')).toHaveClass(/\bselected\b/)
 
     await marker(page, 'JP-02').click()
     await expect(card(page).getByRole('heading', { level: 2 })).toHaveText('Wilderness context 2 — Unnamed mapped stream')
     await expect(card(page).getByTestId('scouting-index')).toHaveText('85 / 100')
-    await expect(card(page).getByTestId('pool')).toHaveText('Wilderness context')
+    await expect(card(page).getByTestId('pool')).toHaveText('Wilderness context #2')
     await expect(marker(page, 'EP-04')).not.toHaveClass(/\bselected\b/)
     await expect(marker(page, 'JP-02')).toHaveClass(/\bselected\b/)
 
@@ -65,6 +73,7 @@ test.describe('data to map', () => {
 
   test('a keyboard user can open a card from a marker with Enter or Space', async ({ page }) => {
     await page.goto('./')
+    await showAll(page)
     await marker(page, 'EP-05').focus()
     await page.keyboard.press('Enter')
     await expect(card(page).getByRole('heading', { level: 2 })).toHaveText('East Portal scout 5 — Unnamed mapped stream')
