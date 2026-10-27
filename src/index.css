@@ -20,6 +20,19 @@
   --color-line: #e2e5dc;
   --color-line-strong: #cdd7cc;
   --color-map: #e4e8dd;
+  --color-map-canvas: #e9ebdf;
+
+  /* Map notices */
+  --color-alert: #fff5df;
+  --color-alert-line: #e5d0a7;
+  --color-alert-text: #8c642b;
+
+  /* Candidate markers: Nearby amber, Wilderness context pale, selected forest green */
+  --color-marker: #c7762f;
+  --color-marker-ring: #a96426;
+  --color-marker-context: #e9dfc8;
+  --color-marker-context-text: #5b5b3c;
+  --color-marker-selected: #173e35;
 
   /* Amber accents */
   --color-amber: #c56e28;
@@ -60,6 +73,68 @@
   :where(button, input, select, a):focus-visible {
     outline: 3px solid var(--color-focus);
     outline-offset: 3px;
+  }
+}
+
+/*
+ * Leaflet's stylesheet is unlayered, so it beats any Tailwind utility. Its
+ * container defaults are overridden here, unlayered and more specific.
+ */
+.leaflet-container.atlas-map {
+  background: var(--color-map-canvas);
+  font-family: inherit;
+}
+
+/* Leaflet builds these elements itself, so they're styled by class. */
+@layer components {
+  .candidate-marker {
+    border: 0;
+    background: transparent;
+  }
+
+  .candidate-marker-core {
+    position: relative;
+    display: flex;
+    width: 31px;
+    height: 31px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff8e9;
+    border-radius: 50%;
+    background: var(--color-marker);
+    box-shadow:
+      0 2px 8px #39250a45,
+      0 0 0 1px var(--color-marker-ring);
+    color: #fffaf0;
+    font-size: 11px;
+    font-weight: 750;
+    transition: transform 0.15s;
+  }
+
+  .candidate-marker.context .candidate-marker-core {
+    border-color: var(--color-sheet);
+    background: var(--color-marker-context);
+    box-shadow: 0 2px 7px #183a2430;
+    color: var(--color-marker-context-text);
+  }
+
+  .candidate-marker.selected .candidate-marker-core {
+    background: var(--color-marker-selected);
+    box-shadow:
+      0 0 0 5px #bd7b3e44,
+      0 2px 8px #39250a55;
+    color: #fffaf0;
+    transform: scale(1.12);
+  }
+
+  .leaflet-tooltip.candidate-tooltip {
+    border: 1px solid #d4dccd;
+    border-radius: 4px;
+    background: #fffdf2f2;
+    box-shadow: 0 2px 8px #20341a14;
+    color: #2f4d3b;
+    font-size: 10px;
+    padding: 5px 8px;
   }
 }
 

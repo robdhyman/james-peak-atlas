@@ -1,4 +1,31 @@
-export function App() {
+import { useEffect, useMemo, useState } from 'react'
+import { type Atlas, type DataError, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, resolveUrl } from './atlas/data.ts'
+import type { FeatureCollection } from './atlas/schemas.ts'
+import type { MapLayer } from './map/mapAdapter.ts'
+import { MapView } from './map/MapView.tsx'
+import { CandidateCard } from './ui/CandidateCard.tsx'
+import { FatalError } from './ui/FatalError.tsx'
+
+type Load = { status: 'loading' } | { status: 'failed'; error: DataError } | { status: 'ready'; atlas: Atlas }
+
+/** The raster drawn under everything else until layer controls arrive. */
+const BASE_RASTER = 'hillshade'
+
+export function App({ source }: { source: DataSource }) {
+  const [load, setLoad] = useState<Load>({ status: 'loading' })
+
+  useEffect(() => {
+    let active = true
+    loadAtlas(source).then((result) => {
+      if (active) setLoad(result.ok ? { status: 'ready', atlas: result.value } : { status: 'failed', error: result.error })
+    })
+    return () => {
+      active = false
+    }
+  }, [source])
+
+  if (load.status === 'failed') return <FatalError error={load.error} />
+
   return (
     <div className="flex h-full flex-col">
       <Topbar />
@@ -14,8 +41,74 @@ export function App() {
             </p>
           </div>
         </aside>
-        <main aria-label="Interactive scouting map" className="relative min-w-0 flex-1 bg-map" />
+        <main aria-label="Interactive scouting map" className="relative min-w-0 flex-1 bg-map">
+          {load.status === 'loading' ? <MapLoading /> : <AtlasMap atlas={load.atlas} source={source} />}
+        </main>
       </div>
+    </div>
+  )
+}
+
+function AtlasMap({ atlas, source }: { atlas: Atlas; source: DataSource }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [boundary, setBoundary] = useState<FeatureCollection | null>(null)
+  const [layerError, setLayerError] = useState<DataError | null>(null)
+
+  useEffect(() => {
+    let active = true
+    loadGeoJsonLayer(source, atlas.manifest, 'boundary').then((result) => {
+      if (!active) return
+      if (result.ok) setBoundary(result.value)
+      else setLayerError(result.error)
+    })
+    return () => {
+      active = false
+    }
+  }, [atlas, source])
+
+  const layers = useMemo(() => {
+    const raster = atlas.manifest.layers[BASE_RASTER]
+    const next: MapLayer[] = []
+    if (raster?.type === 'raster') {
+      next.push({ key: BASE_RASTER, kind: 'raster', url: resolveUrl(source, raster.url), bounds: raster.bounds })
+    }
+    if (boundary) next.push({ key: 'boundary', kind: 'geojson', data: boundary })
+    return next
+  }, [atlas, source, boundary])
+
+  const selected = atlas.candidates.find((candidate) => candidate.properties.id === selectedId)
+  const notices = [...atlas.warnings, ...(layerError ? [layerError] : [])]
+
+  return (
+    <>
+      <MapView
+        extent={atlas.manifest.bounds}
+        layers={layers}
+        candidates={atlas.candidates}
+        selectedId={selectedId}
+        onCandidateClick={setSelectedId}
+      />
+      {notices.length > 0 && (
+        <div
+          role="status"
+          className="absolute top-5 left-[23px] z-[600] max-w-[430px] rounded-[5px] border border-alert-line bg-alert px-3.5 py-2.5 text-[11px] text-alert-text shadow-panel max-tablet:inset-x-3 max-tablet:top-3"
+        >
+          {notices.map((notice) => (
+            <p key={notice.file}>Couldn’t load {formatDataError(notice)}</p>
+          ))}
+        </div>
+      )}
+      {selected && <CandidateCard candidate={selected} onClose={() => setSelectedId(null)} />}
+    </>
+  )
+}
+
+function MapLoading() {
+  return (
+    <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-paper">
+      <span aria-hidden="true" className="size-7 animate-spin rounded-full border-2 border-line-strong border-t-ink" />
+      <strong className="font-display text-[23px] font-normal">Opening the atlas</strong>
+      <span className="text-[11px] text-muted">Loading the bundled map data</span>
     </div>
   )
 }

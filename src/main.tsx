@@ -1,13 +1,20 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
+import type { DataSource } from './atlas/data.ts'
 import './index.css'
 
 const root = document.getElementById('root')
 if (!root) throw new Error('Missing #root element')
 
+// Every data URL resolves against the Pages subpath, never the site root.
+const source: DataSource = {
+  fetch: (url) => fetch(url),
+  base: new URL(import.meta.env.BASE_URL, window.location.href),
+}
+
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <App source={source} />
   </StrictMode>,
 )
