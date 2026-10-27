@@ -7,10 +7,13 @@ import { decodeViewHash, encodeViewHash } from './candidates/viewLink.ts'
 import { type ListView, visibleCandidates } from './candidates/visibleList.ts'
 import type { MapLayer } from './map/mapAdapter.ts'
 import { type MapHandle, MapView } from './map/MapView.tsx'
+import { useFieldLog } from './fieldLog/useFieldLog.ts'
 import { CandidateDetail } from './ui/CandidateDetail.tsx'
-import { cardId, CandidateList } from './ui/CandidateList.tsx'
+import { cardId, CandidateList, FIELD_STATUS_FILTER_ID } from './ui/CandidateList.tsx'
 import { CanopyReadout } from './ui/CanopyReadout.tsx'
 import { FatalError } from './ui/FatalError.tsx'
+import { FieldLogNotices } from './ui/FieldLogNotices.tsx'
+import { FieldLogTools } from './ui/FieldLogTools.tsx'
 import { LayerControls } from './ui/LayerControls.tsx'
 import { initialLayerState, LAYERS, layerReducer } from './ui/layerState.ts'
 import { Legend } from './ui/Legend.tsx'
@@ -18,7 +21,8 @@ import { MethodDialog } from './ui/MethodDialog.tsx'
 
 type Load = { status: 'loading' } | { status: 'failed'; error: DataError } | { status: 'ready'; atlas: Atlas }
 
-export function App({ source }: { source: DataSource }) {
+/** `storage` keeps the field log; `null` when the browser's storage can't be reached. */
+export function App({ source, storage }: { source: DataSource; storage: Storage | null }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
 
   useEffect(() => {
@@ -39,7 +43,7 @@ export function App({ source }: { source: DataSource }) {
       </Layout>
     )
   }
-  return <AtlasView atlas={load.atlas} source={source} />
+  return <AtlasView atlas={load.atlas} source={source} storage={storage} />
 }
 
 /** Where the open detail panel was opened from, so closing it can hand focus back. */
@@ -47,10 +51,11 @@ type Opener = 'list' | 'map'
 
 /**
  * The loaded atlas. Its root owns the layer state (what's on, overlay
- * strength, and each layer's status), the list view and the selection. The
- * URL hash carries the selection, scope and sort, so a link reopens them.
+ * strength, and each layer's status), the list view, the selection and the
+ * field log. The URL hash carries the selection, scope and sort, so a link
+ * reopens them.
  */
-function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
+function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSource; storage: Storage | null }) {
   const { manifest } = atlas
   const [layerState, dispatch] = useReducer(layerReducer, undefined, initialLayerState)
   const [vectors, setVectors] = useState<Readonly<Record<string, FeatureCollection>>>({})
@@ -62,6 +67,8 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
     opened.view.candidate ? { id: opened.view.candidate, opener: 'map' } : null,
   )
   const [linkProblem, setLinkProblem] = useState(opened.problem)
+  const fieldLog = useFieldLog(storage)
+  const candidateIds = useMemo(() => new Set(atlas.candidates.map(({ properties }) => properties.id)), [atlas.candidates])
   const map = useRef<MapHandle>(null)
   const [zoom, setZoom] = useState<number | null>(null)
   const [probe, setProbe] = useState<LatLng | null>(null)
@@ -108,12 +115,15 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   )
 
   // The one visible list, for the cards and the markers alike.
-  const visible = useMemo(() => visibleCandidates(atlas.candidates, view), [atlas.candidates, view])
+  const visible = useMemo(() => visibleCandidates(atlas.candidates, view, fieldLog.log), [atlas.candidates, view, fieldLog.log])
   const markers = useMemo(() => visible.map(({ candidate }) => candidate), [visible])
   const pools = useMemo(() => new Set(visible.map(({ pool }) => pool)), [visible])
 
-  // A candidate that leaves the visible list takes its detail panel with it.
-  const selected = selection ? visible.find(({ candidate }) => candidate.properties.id === selection.id)?.candidate : undefined
+  // A candidate that leaves the visible list takes its detail panel with it,
+  // except through the field-status filter: changing the open candidate's
+  // field status mustn't close the panel it was changed in.
+  const selectable = useMemo(() => visibleCandidates(atlas.candidates, { ...view, fieldStatus: null }), [atlas.candidates, view])
+  const selected = selection ? selectable.find(({ candidate }) => candidate.properties.id === selection.id)?.candidate : undefined
   if (selection && !selected) setSelection(null)
   const selectedId = selected ? selected.properties.id : null
 
@@ -153,7 +163,12 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   function closeDetail() {
     if (!selection) return
     setSelection(null)
-    if (selection.opener === 'list') document.getElementById(cardId(selection.id))?.focus()
+    if (!visible.some(({ candidate }) => candidate.properties.id === selection.id)) {
+      // Filtered out by field status, so its card and marker are gone: focus the filter, or its tab when that's hidden.
+      const filter = document.getElementById(FIELD_STATUS_FILTER_ID)
+      filter?.focus()
+      if (document.activeElement !== filter) document.getElementById('candidates-tab')?.focus()
+    } else if (selection.opener === 'list') document.getElementById(cardId(selection.id))?.focus()
     else map.current?.focusCandidate(selection.id)
   }
 
@@ -171,7 +186,9 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
               manifest={manifest}
               view={view}
               visible={visible}
+              log={fieldLog.log}
               selectedId={selectedId}
+              tools={<FieldLogTools log={fieldLog.log} candidateIds={candidateIds} onReplace={fieldLog.replace} />}
               onViewChange={setView}
               onSelect={selectFromList}
             />
@@ -200,6 +217,7 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
             ))}
           </div>
         )}
+        <FieldLogNotices fieldLog={fieldLog} className={NOTICE} />
         {linkProblem && (
           <div role="status" aria-label="Link notice" className={`${NOTICE} flex items-start gap-3`}>
             <p className="flex-1">{linkProblem} The default view is open instead.</p>
@@ -238,7 +256,17 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
           className={selected ? 'max-tablet:hidden' : ''}
         />
       )}
-      {selected && <CandidateDetail candidate={selected} manifest={manifest} method={atlas.method} onClose={closeDetail} />}
+      {selected && (
+        <CandidateDetail
+          candidate={selected}
+          manifest={manifest}
+          method={atlas.method}
+          logEntry={fieldLog.log[selected.properties.id]}
+          saving={fieldLog.canSave && !fieldLog.saveError}
+          onLogChange={(change) => fieldLog.update(selected.properties.id, change)}
+          onClose={closeDetail}
+        />
+      )}
     </Layout>
   )
 }

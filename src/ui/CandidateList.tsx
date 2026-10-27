@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import type { Manifest } from '../atlas/schemas.ts'
+import { FIELD_STATUS_LABELS, FIELD_STATUSES, type FieldLog, type FieldStatus, fieldStatusOf } from '../fieldLog/fieldLog.ts'
 import { type ListView, type Scope, type SortKey, resolveSort, sortsFor, type VisibleCandidate } from '../candidates/visibleList.ts'
 import { formatMiles, formatPoolRank, formatScoutingIndex, routeNote } from './format.ts'
 
@@ -14,6 +15,17 @@ const SORT_LABELS: Record<SortKey, string> = {
   security: 'Security',
 }
 
+/** Field status chips, as the reference atlas's status tags. */
+const FIELD_STATUS_CHIP: Record<FieldStatus, string> = {
+  to_scout: 'bg-[#edf0e5] text-[#56684b]',
+  scouted: 'bg-[#e4ece0] text-[#3f6236]',
+  camera_placed: 'bg-[#ddecdf] text-[#2b6b53]',
+  ruled_out: 'bg-[#f3e9e0] text-[#7d5f4d]',
+}
+
+/** The field-status filter's DOM id: focus falls back to it when a closed candidate's card is filtered out. */
+export const FIELD_STATUS_FILTER_ID = 'field-status-filter'
+
 /** The DOM id of a candidate's card, so focus can come back to it. */
 export function cardId(candidateId: string): string {
   return `candidate-card-${candidateId}`
@@ -23,13 +35,16 @@ interface CandidateListProps {
   manifest: Manifest
   view: ListView
   visible: readonly VisibleCandidate[]
+  log: FieldLog
   selectedId: string | null
+  /** The field log's export, import and reset, shown under the filters. */
+  tools: ReactNode
   onViewChange(view: ListView): void
   onSelect(id: string): void
 }
 
-/** Scope, sort and search over the visible list, and a card per candidate in it. */
-export function CandidateList({ manifest, view, visible, selectedId, onViewChange, onSelect }: CandidateListProps) {
+/** Scope, sort, field status and search over the visible list, and a card per candidate in it. */
+export function CandidateList({ manifest, view, visible, log, selectedId, tools, onViewChange, onSelect }: CandidateListProps) {
   const sort = resolveSort(view.scope, view.sort)
   const budget = manifest.constraints.roundtrip_miles
 
@@ -88,6 +103,27 @@ export function CandidateList({ manifest, view, visible, selectedId, onViewChang
         </select>
       </div>
 
+      <div className="mb-3 flex items-center gap-2">
+        <label htmlFor={FIELD_STATUS_FILTER_ID} className="text-[10px] text-ink-soft">
+          Field status
+        </label>
+        <select
+          id={FIELD_STATUS_FILTER_ID}
+          value={view.fieldStatus ?? ''}
+          onChange={(event) => onViewChange({ ...view, fieldStatus: (event.target.value || null) as FieldStatus | null })}
+          className="min-w-0 flex-1 rounded-[4px] border border-[#d9dfd2] bg-[#f4f5ee] px-2 py-1.5 text-[11px] text-ink"
+        >
+          <option value="">Any field status</option>
+          {FIELD_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {FIELD_STATUS_LABELS[status]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {tools}
+
       <div className="relative mb-3">
         <svg
           viewBox="0 0 20 20"
@@ -118,19 +154,21 @@ export function CandidateList({ manifest, view, visible, selectedId, onViewChang
         <ol aria-label="Candidates">
           {visible.map((entry) => (
             <li key={entry.candidate.properties.id}>
-              <CandidateCard entry={entry} budget={budget} selected={entry.candidate.properties.id === selectedId} onSelect={onSelect} />
+              <CandidateCard
+                entry={entry}
+                budget={budget}
+                fieldStatus={fieldStatusOf(log, entry.candidate.properties.id)}
+                selected={entry.candidate.properties.id === selectedId}
+                onSelect={onSelect}
+              />
             </li>
           ))}
         </ol>
       ) : (
         <p className="px-2.5 py-[22px] text-center text-[12px] text-[#737f6a]">
-          No candidates match this search.
-          {view.scope === 'nearby' && (
-            <>
-              <br />
-              Try another search, or switch to All.
-            </>
-          )}
+          No candidates match this view.
+          <br />
+          Try another field status or search{view.scope === 'nearby' && ', or switch to All'}.
         </p>
       )}
     </>
@@ -140,11 +178,13 @@ export function CandidateList({ manifest, view, visible, selectedId, onViewChang
 function CandidateCard({
   entry: { candidate, position, poolRank, pool },
   budget,
+  fieldStatus,
   selected,
   onSelect,
 }: {
   entry: VisibleCandidate
   budget: number
+  fieldStatus: FieldStatus
   selected: boolean
   onSelect(id: string): void
 }) {
@@ -175,6 +215,9 @@ function CandidateCard({
           {formatPoolRank(pool, poolRank)}
         </span>
         <span data-testid="card-roundtrip">{formatMiles(metrics.roundtrip_lower_bound_miles)} minimum round trip</span>
+        <span data-testid="card-field-status" className={`rounded-[3px] px-[5px] py-px ${FIELD_STATUS_CHIP[fieldStatus]}`}>
+          {FIELD_STATUS_LABELS[fieldStatus]}
+        </span>
       </span>
       <span
         data-testid="card-route-note"

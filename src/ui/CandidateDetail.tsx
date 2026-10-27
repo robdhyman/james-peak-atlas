@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useEffect, useRef } from 'react'
 import { COMPONENTS, type Candidate, type ComponentKey, type Manifest, type Method } from '../atlas/schemas.ts'
+import { FIELD_STATUS_LABELS, FIELD_STATUSES, type FieldLogEntry, type FieldStatus } from '../fieldLog/fieldLog.ts'
 import { formatMetres, formatMiles, formatPoolRank, formatScoutingIndex, routeNote } from './format.ts'
 
 const COMPONENT_LABELS: Record<ComponentKey, string> = {
@@ -23,11 +24,16 @@ interface CandidateDetailProps {
   candidate: Candidate
   manifest: Manifest
   method: Method
+  /** The candidate's field log entry, if it has one. */
+  logEntry: FieldLogEntry | undefined
+  /** False while changes aren't reaching storage; the map's notice says why. */
+  saving: boolean
+  onLogChange(change: { status?: FieldStatus; notes?: string }): void
   onClose(): void
 }
 
 /** The full evidence for one candidate. It takes focus when it opens; Escape or × closes it. */
-export function CandidateDetail({ candidate, manifest, method, onClose }: CandidateDetailProps) {
+export function CandidateDetail({ candidate, manifest, method, logEntry, saving, onLogChange, onClose }: CandidateDetailProps) {
   const { geometry, properties } = candidate
   const { id, name, pool, rank, score, components, metrics } = properties
   const [lon, lat] = geometry.coordinates
@@ -215,9 +221,51 @@ export function CandidateDetail({ candidate, manifest, method, onClose }: Candid
           <br />
           The location is model-derived. Elk activity here hasn’t been confirmed.
         </p>
+
+        <div className="mt-[18px] border-t border-line pt-4">
+          <DetailHeading>Field log</DetailHeading>
+          <label htmlFor="detail-field-status" className="mb-1.5 block text-[10px] text-[#6f7c61]">
+            Field status
+          </label>
+          <select
+            id="detail-field-status"
+            value={logEntry?.status ?? 'to_scout'}
+            onChange={(event) => onLogChange({ status: event.target.value as FieldStatus })}
+            className="w-full rounded-[4px] border border-[#d3ddc8] bg-white px-2.5 py-2 text-[11px] text-ink"
+          >
+            {FIELD_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {FIELD_STATUS_LABELS[status]}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="detail-notes" className="mt-3 mb-1.5 block text-[10px] text-[#6f7c61]">
+            Notes
+          </label>
+          <textarea
+            id="detail-notes"
+            rows={3}
+            value={logEntry?.notes ?? ''}
+            onChange={(event) => onLogChange({ notes: event.target.value })}
+            placeholder="Water flowing? Tracks? Trail access? Wind or recovery notes…"
+            className="min-h-[65px] w-full resize-y rounded-[4px] border border-[#dce3d1] bg-[#fbfcf7] p-[9px] text-[11px] leading-normal text-ink"
+          />
+          <p data-testid="field-log-saved" className={`mt-1.5 text-[9px] ${saving ? 'text-[#6f7c61]' : 'font-semibold text-alert-text'}`}>
+            {!saving
+              ? 'Not saved in this browser. See the notice on the map.'
+              : logEntry
+                ? `Saved in this browser at ${formatTime(logEntry.updated)}. Export the log to keep a copy.`
+                : 'Saved in this browser only. Export the log to keep a copy.'}
+          </p>
+        </div>
       </div>
     </section>
   )
+}
+
+/** "26 Oct 2026, 20:41", in the viewer's time zone. */
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function DetailHeading({ children }: { children: string }) {

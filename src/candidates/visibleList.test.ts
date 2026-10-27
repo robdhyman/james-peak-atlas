@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import { formatDataError, loadAtlas } from '../atlas/data.ts'
 import type { Candidate } from '../atlas/schemas.ts'
 import { bundle } from '../atlas/testing/bundle.ts'
+import type { FieldLog } from '../fieldLog/fieldLog.ts'
 import { type ListView, resolveSort, sortsFor, visibleCandidates } from './visibleList.ts'
 
 // Expected orders are worked out by hand from candidates.geojson, not from the selector.
@@ -161,5 +162,41 @@ describe('pool rank and position', () => {
       [1, 1],
       [2, 3],
     ])
+  })
+})
+
+describe('field-status filter', () => {
+  const at = '2026-10-20T15:04:05.000Z'
+  const log: FieldLog = {
+    'EP-04': { status: 'scouted', updated: at },
+    'JP-07': { status: 'scouted', updated: at },
+    'EP-03': { status: 'ruled_out', updated: at },
+    // Notes alone leave a candidate To scout.
+    'EP-01': { notes: 'Check the seep', updated: at },
+  }
+  const filtered = (view: Partial<ListView>) =>
+    visibleCandidates(candidates, { scope: 'nearby', sort: null, search: '', ...view }, log).map((v) => v.candidate.properties.id)
+
+  test('To scout includes candidates with no entry, and keeps the sort', () => {
+    expect(filtered({ fieldStatus: 'to_scout' })).toEqual(['EP-05', 'EP-01', 'EP-06', 'EP-02'])
+  })
+
+  test('works together with scope', () => {
+    expect(filtered({ fieldStatus: 'scouted' })).toEqual(['EP-04'])
+    expect(filtered({ scope: 'all', fieldStatus: 'scouted' })).toEqual(['JP-07', 'EP-04'])
+  })
+
+  test('works together with search', () => {
+    expect(filtered({ scope: 'all', fieldStatus: 'scouted', search: 'jp' })).toEqual(['JP-07'])
+  })
+
+  test('a status nobody has gives an empty list, and no filter shows every field status', () => {
+    expect(filtered({ fieldStatus: 'camera_placed' })).toEqual([])
+    expect(filtered({ fieldStatus: null })).toEqual(SCOUT_ORDER)
+  })
+
+  test('renumbers the list but keeps each pool rank', () => {
+    const [first] = visibleCandidates(candidates, { scope: 'nearby', sort: null, search: '', fieldStatus: 'scouted' }, log)
+    expect(first).toMatchObject({ position: 1, poolRank: 4 })
   })
 })

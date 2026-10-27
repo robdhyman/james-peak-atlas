@@ -85,7 +85,7 @@ test.describe('the candidate list', () => {
     await scope(page, 'Nearby').click()
     await search(page).fill('Blue Creek')
     await expect(list(page)).toHaveCount(0)
-    await expect(page.getByText('No candidates match this search.')).toBeVisible()
+    await expect(page.getByText('No candidates match this view.')).toBeVisible()
     await expect.poll(() => markers(page).count()).toBe(0)
   })
 
@@ -209,8 +209,9 @@ test.describe('keyboard', () => {
     await expect(candidatesTab(page)).toBeFocused()
     await expect(candidatesTab(page)).toHaveAttribute('aria-selected', 'true')
 
-    // Scope (two buttons), sort and search come before the first card.
-    for (let i = 0; i < 5; i++) await page.keyboard.press('Tab')
+    // Scope (two buttons), sort, field status, Import log and search come before the first card.
+    // Export log and Reset log are disabled while the field log is empty.
+    for (let i = 0; i < 7; i++) await page.keyboard.press('Tab')
     await expect(cardFor(page, 'EP-04')).toBeFocused()
 
     await page.keyboard.press('Enter')

@@ -1,6 +1,7 @@
 // The visible-list selector: the one source for the candidate list and the
 // map markers. Pure, so its orders can be pinned by tests.
 import { COMPONENTS, type Candidate, type ComponentKey, type Pool } from '../atlas/schemas.ts'
+import { type FieldLog, type FieldStatus, fieldStatusOf } from '../fieldLog/fieldLog.ts'
 
 export const SCOPES = ['nearby', 'all'] as const
 export type Scope = (typeof SCOPES)[number]
@@ -14,6 +15,8 @@ export interface ListView {
   /** The sort the owner picked, or `null` for the scope's default. */
   readonly sort: SortKey | null
   readonly search: string
+  /** Only candidates with this field status; absent or `null` for every field status. */
+  readonly fieldStatus?: FieldStatus | null
 }
 
 export interface VisibleCandidate {
@@ -36,12 +39,14 @@ export function resolveSort(scope: Scope, sort: SortKey | null): SortKey {
   return scope === 'nearby' ? 'scout' : 'index'
 }
 
-export function visibleCandidates(candidates: readonly Candidate[], view: ListView): readonly VisibleCandidate[] {
+/** The field log decides each candidate's field status; one without an entry is To scout. */
+export function visibleCandidates(candidates: readonly Candidate[], view: ListView, log: FieldLog = {}): readonly VisibleCandidate[] {
   const sort = resolveSort(view.scope, view.sort)
   const term = view.search.trim().toLowerCase()
   return candidates
     .filter(({ properties }) => view.scope === 'all' || properties.pool === 'nearby')
     .filter(({ properties }) => !term || properties.id.toLowerCase().includes(term) || properties.name.toLowerCase().includes(term))
+    .filter(({ properties }) => !view.fieldStatus || fieldStatusOf(log, properties.id) === view.fieldStatus)
     .toSorted((a, b) => compare(a, b, sort))
     .map((candidate, index) => ({
       candidate,

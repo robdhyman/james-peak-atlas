@@ -13,8 +13,17 @@ const source: DataSource = {
   base: new URL(import.meta.env.BASE_URL, window.location.href),
 }
 
+// Reaching localStorage itself can throw when site data is blocked.
+function browserStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
 createRoot(root).render(
   <StrictMode>
-    <App source={source} />
+    <App source={source} storage={browserStorage()} />
   </StrictMode>,
 )
