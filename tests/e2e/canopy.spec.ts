@@ -129,4 +129,23 @@ test.describe('canopy inspector with touch', () => {
     await page.touchscreen.tap(known.x + cellPixels, known.y)
     await expect(readout(page).getByTestId('canopy-value')).toHaveText('Canopy 23%')
   })
+
+  test('the mouse leave Chromium makes up after a tap doesn’t clear the reading', async ({ page }) => {
+    await page.goto('./')
+    const { toScreen } = await zoomToReadablePixels(page, 'touch')
+    const known = toScreen(KNOWN)
+    await page.touchscreen.tap(known.x, known.y)
+    await expect(readout(page).getByTestId('canopy-value')).toHaveText('Canopy 31%')
+
+    // Chromium on Linux follows a tap with these, at (0, 0) and with no
+    // matching pointer events, as if a mouse had left the map. No mouse did.
+    await page.getByTestId('map').evaluate(async (map) => {
+      for (const type of ['mouseout', 'mouseleave']) {
+        map.dispatchEvent(new MouseEvent(type, { clientX: 0, clientY: 0, bubbles: type === 'mouseout' }))
+      }
+      // Two frames, so React has rendered whatever the events changed.
+      for (let frame = 0; frame < 2; frame++) await new Promise(requestAnimationFrame)
+    })
+    await expect(readout(page).getByTestId('canopy-value')).toHaveText('Canopy 31%')
+  })
 })

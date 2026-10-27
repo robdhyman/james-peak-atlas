@@ -108,12 +108,28 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   // The probe listens on the container, not through the map's mousemove:
   // the canvas renderer swallows its element's events and re-fires them at
   // most every 32 ms, which can drop the last move before the pointer stops.
-  // Touch has no hover, so a tap (Leaflet's click, not on a marker or a
-  // control) probes too.
+  // Only a pointer that can hover (a mouse or a pen) follows moves and
+  // leaves. Mouse events can't be trusted for that: browsers make them up
+  // for touch, and Chromium on Linux follows every tap with a mouse leave
+  // at (0, 0), which would clear the reading the tap just made. Touch has no
+  // hover, so a tap (Leaflet's click, not on a marker or a control) probes.
   const probing = new AbortController()
   const probeAt = ({ lat, lng }: L.LatLng) => events.onProbe({ lat, lng })
-  container.addEventListener('mousemove', (event) => probeAt(map.mouseEventToLatLng(event)), { signal: probing.signal })
-  container.addEventListener('mouseleave', () => events.onProbe(null), { signal: probing.signal })
+  const hovers = ({ pointerType }: PointerEvent) => pointerType === 'mouse' || pointerType === 'pen'
+  container.addEventListener(
+    'pointermove',
+    (event) => {
+      if (hovers(event)) probeAt(map.mouseEventToLatLng(event))
+    },
+    { signal: probing.signal },
+  )
+  container.addEventListener(
+    'pointerleave',
+    (event) => {
+      if (hovers(event)) events.onProbe(null)
+    },
+    { signal: probing.signal },
+  )
   map.on('click', ({ latlng }: L.LeafletMouseEvent) => probeAt(latlng))
 
   const built = new Map<string, { spec: MapLayer; layer: L.Layer }>()
