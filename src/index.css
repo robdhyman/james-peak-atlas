@@ -1,0 +1,72 @@
+@import 'tailwindcss';
+
+/*
+ * The reference atlas's look, ported as theme tokens. Values come from
+ * reference/public/styles.css; names follow how that stylesheet uses them.
+ */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: Georgia, serif;
+
+  /* Forest green */
+  --color-ink: #193e35;
+  --color-ink-soft: #446057;
+  --color-ink-raised: #244a40;
+  --color-muted: #718078;
+
+  /* Paper and rules */
+  --color-paper: #f8f7f2;
+  --color-sheet: #fffefa;
+  --color-line: #e2e5dc;
+  --color-line-strong: #cdd7cc;
+  --color-map: #e4e8dd;
+
+  /* Amber accents */
+  --color-amber: #c56e28;
+  --color-amber-pale: #faeddc;
+  --color-amber-dot: #d79b4b;
+  --color-focus: #df9d52;
+
+  /* Text on the forest-green header */
+  --color-topbar-text: #f4f3e9;
+  --color-topbar-eyebrow: #c1cfc1;
+  --color-topbar-muted: #c6d2ca;
+  --color-scenario: #ecd9b4;
+  --color-brand-mark: #d6b784;
+
+  --color-water: #438ba0;
+
+  --shadow-panel: 0 8px 30px #18372a18;
+
+  /* The reference layout's own breakpoints (800, 1100 and 1500 px). */
+  --breakpoint-tablet: 50rem;
+  --breakpoint-desktop: 68.75rem;
+  --breakpoint-wide: 93.75rem;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  :where(button, input, select, a):focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
