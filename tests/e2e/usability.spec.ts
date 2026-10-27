@@ -330,7 +330,8 @@ test.describe('screen-reader semantics', () => {
     await page.route('**/james-peak-atlas/data/canopy.png', (route) => route.abort())
     // On the Candidates tab, so the layer's own control is out of sight.
     const canopy = page.getByRole('checkbox', { name: 'Canopy cover · 2025' })
-    await canopy.check()
+    // A click, not check(): the control unticks itself as the image fails, which check() would report as a failed click.
+    await canopy.click()
     await candidatesTab(page).click()
     await expect(announcer(page)).toHaveText('Canopy cover · 2025 couldn’t load. Retry it in Map layers.')
 

@@ -203,7 +203,9 @@ test.describe('layer failure', () => {
     const requests: string[] = []
     page.on('request', (request) => requests.push(new URL(request.url()).pathname))
 
-    await control(page, 'Canopy cover · 2025').check()
+    // A click, not check(): the image fails at once and the control unticks
+    // itself, sometimes before check() can confirm the tick it expects.
+    await control(page, 'Canopy cover · 2025').click()
     const canopy = row(page, 'Canopy cover · 2025')
     await expect(canopy.getByTestId('layer-failure')).toContainText('Couldn’t load: the image couldn’t be loaded')
     await expect(control(page, 'Canopy cover · 2025')).not.toBeChecked()
