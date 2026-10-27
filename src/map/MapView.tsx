@@ -1,6 +1,6 @@
 import { type Ref, useEffect, useEffectEvent, useImperativeHandle, useRef } from 'react'
 import type { LatLng } from '../atlas/canopy.ts'
-import type { Candidate, LeafletBounds } from '../atlas/schemas.ts'
+import type { Candidate, LeafletBounds, Observation } from '../atlas/schemas.ts'
 import { createMapAdapter, type MapAdapter, type MapEvents, type MapLayer } from './mapAdapter.ts'
 
 interface MapViewProps extends MapEvents {
@@ -9,18 +9,19 @@ interface MapViewProps extends MapEvents {
   /** 0–1, applied to the evidence overlays only. */
   overlayOpacity: number
   candidates: readonly Candidate[]
+  observations: readonly Observation[]
   selectedId: string | null
   ref?: Ref<MapHandle>
 }
 
 /** One-off map commands that aren't state: React calls them from event handlers. */
-export type MapHandle = Pick<MapAdapter, 'reveal' | 'focusCandidate'>
+export type MapHandle = Pick<MapAdapter, 'reveal' | 'focusCandidate' | 'fitObservations'>
 
 /**
  * Owns the map adapter's lifecycle: created once on mount, removed on
  * unmount. Prop changes become adapter commands; they never re-create the map.
  */
-export function MapView({ extent, layers, overlayOpacity, candidates, selectedId, ref, ...handlers }: MapViewProps) {
+export function MapView({ extent, layers, overlayOpacity, candidates, observations, selectedId, ref, ...handlers }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
   const adapter = useRef<MapAdapter | null>(null)
   const candidateClicked = useEffectEvent((id: string) => handlers.onCandidateClick(id))
@@ -50,6 +51,7 @@ export function MapView({ extent, layers, overlayOpacity, candidates, selectedId
     () => ({
       reveal: (id) => adapter.current?.reveal(id),
       focusCandidate: (id) => adapter.current?.focusCandidate(id),
+      fitObservations: () => adapter.current?.fitObservations(),
     }),
     [],
   )
@@ -59,6 +61,7 @@ export function MapView({ extent, layers, overlayOpacity, candidates, selectedId
   useEffect(() => adapter.current?.setOverlayOpacity(overlayOpacity), [overlayOpacity])
   useEffect(() => adapter.current?.setLayers(layers), [layers])
   useEffect(() => adapter.current?.setCandidates(candidates), [candidates])
+  useEffect(() => adapter.current?.setObservations(observations), [observations])
   useEffect(() => adapter.current?.select(selectedId), [selectedId])
 
   return <div ref={container} data-testid="map" className="atlas-map absolute inset-0 z-0" />

@@ -3,7 +3,7 @@
 // Leaflet reports back through the event callbacks.
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { Candidate, FeatureCollection, LeafletBounds } from '../atlas/schemas.ts'
+import type { Candidate, FeatureCollection, LeafletBounds, Observation } from '../atlas/schemas.ts'
 import {
   fixedRasterOpacity,
   isIndexContour,
@@ -49,12 +49,16 @@ export interface MapAdapter {
   /** Opacity, 0–1, of the evidence overlays. Base rasters and vector layers keep their own. */
   setOverlayOpacity(opacity: number): void
   setCandidates(candidates: readonly Candidate[]): void
+  /** The owner's observations, drawn as evidence apart from the candidates. */
+  setObservations(observations: readonly Observation[]): void
   select(id: string | null): void
   /** Pans, zooming in if needed, so the candidate sits in view beside the detail panel. */
   reveal(id: string): void
   /** Moves keyboard focus to the candidate's marker. */
   focusCandidate(id: string): void
   fitTo(bounds: LeafletBounds): void
+  /** Fits the map to the observations, not so close that their surroundings vanish. */
+  fitObservations(): void
   destroy(): void
 }
 
@@ -66,6 +70,9 @@ const MAX_CONTOUR_LABELS = 45
 const REVEAL_ZOOM = { min: 14, max: 15 } as const
 /** On wide screens the detail panel covers the map's right side, so the candidate sits this far left of centre. */
 const REVEAL_OFFSET_X = 140
+
+/** Fitting to the observations stops at this zoom and pads this far, as the reference atlas's focus control did. */
+const OBSERVATION_FIT = { maxZoom: 15, padding: 70 } as const
 
 export function createMapAdapter(container: HTMLElement, events: MapEvents): MapAdapter {
   const map = L.map(container, {
@@ -95,6 +102,7 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   const built = new Map<string, { spec: MapLayer; layer: L.Layer }>()
   const markers = new Map<string, L.Marker>()
   const candidateGroup = L.layerGroup().addTo(map)
+  const observationGroup = L.layerGroup().addTo(map)
   const contourLabels = L.layerGroup().addTo(map)
   let contourTimer: ReturnType<typeof setTimeout> | undefined
   let overlayOpacity = 0.65
@@ -254,6 +262,23 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
       if (selected) markSelected(selected, true)
     },
 
+    setObservations(observations) {
+      observationGroup.clearLayers()
+      for (const { geometry, properties } of observations) {
+        const [lon, lat] = geometry.coordinates
+        const { id, name } = properties
+        L.marker([lat, lon], {
+          pane: 'observations',
+          // The observations list carries the same text, so the markers stay out of the tab order.
+          keyboard: false,
+          title: `${id}: ${name}, observation`,
+          icon: L.divIcon({ className: 'observation-marker', html: '<span></span>', iconSize: [20, 20], iconAnchor: [10, 10] }),
+        })
+          .bindTooltip(`${id} · ${name}`, { direction: 'top', offset: [0, -11], className: 'candidate-tooltip' })
+          .addTo(observationGroup)
+      }
+    },
+
     select(id) {
       if (selected) markSelected(selected, false)
       selected = id
@@ -282,6 +307,13 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
         ],
         { padding: [35, 35] },
       )
+    },
+
+    fitObservations() {
+      const points = observationGroup.getLayers().flatMap((layer) => (layer instanceof L.Marker ? [layer.getLatLng()] : []))
+      if (points.length === 0) return
+      const { maxZoom, padding } = OBSERVATION_FIT
+      map.fitBounds(L.latLngBounds(points), { maxZoom, padding: [padding, padding] })
     },
 
     destroy() {

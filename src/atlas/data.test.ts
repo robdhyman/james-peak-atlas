@@ -317,11 +317,58 @@ describe('the three definitions of "nearby" must agree', () => {
   })
 })
 
+/** Made-up sightings: the owner's real observations never enter the repo (ADR 0001). */
+const FICTIONAL_OBSERVATIONS = [
+  {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [-105.7, 39.95] },
+    properties: { id: 'T1', name: 'Test wallow', observed: 'June 2020', note: 'Invented for this test.' },
+  },
+  { type: 'Feature', geometry: { type: 'Point', coordinates: [-105.68, 39.93] }, properties: { id: 'T2', name: 'Test camera' } },
+]
+
+/** The real bundle with the made-up observations in place of the empty file, edited by `edit`. */
+const withObservations = (edit: (features: Json[]) => void = () => {}) =>
+  withFile('data/observations.geojson', (json) => {
+    json['features'] = structuredClone(FICTIONAL_OBSERVATIONS)
+    edit(json['features'])
+  })
+
 describe('optional and per-layer files', () => {
   test('unreadable observations are a warning, never an error', async () => {
     const { observations, warnings } = await atlas(withFile('data/observations.geojson', null))
     expect(observations).toEqual([])
     expect(warnings).toEqual([{ file: 'data/observations.geojson', problem: 'file not found (HTTP 404)' }])
+  })
+
+  test('a private observations file loads each sighting with its ID, name, date and note', async () => {
+    const { observations, warnings } = await atlas(withObservations())
+    expect(warnings).toEqual([])
+    expect(observations.map(({ properties }) => properties)).toEqual([
+      { id: 'T1', name: 'Test wallow', observed: 'June 2020', note: 'Invented for this test.' },
+      { id: 'T2', name: 'Test camera' },
+    ])
+  })
+
+  test('an observation without a name is a warning, and the atlas carries no observations', async () => {
+    const { observations, warnings } = await atlas(withObservations((features) => delete features[1]!['properties'].name))
+    expect(observations).toEqual([])
+    expect(warnings).toEqual([
+      { file: 'data/observations.geojson', record: 'feature 2 (T2)', problem: expect.stringMatching(/^properties\.name: /) },
+    ])
+  })
+
+  test('two observations sharing an ID are a warning', async () => {
+    const { observations, warnings } = await atlas(withObservations((features) => (features[1]!['properties'].id = 'T1')))
+    expect(observations).toEqual([])
+    expect(warnings).toEqual([{ file: 'data/observations.geojson', record: 'feature 2 (T1)', problem: 'duplicate ID' }])
+  })
+
+  test('an observation in [lat, lon] order is a warning', async () => {
+    const { warnings } = await atlas(withObservations((features) => features[0]!['geometry'].coordinates.reverse()))
+    expect(warnings).toEqual([
+      { file: 'data/observations.geojson', record: 'feature 1 (T1)', problem: 'coordinates look like [lat, lon]; expected [lon, lat]' },
+    ])
   })
 
   test('a contour off the 40 ft interval', async () => {

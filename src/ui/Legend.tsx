@@ -2,6 +2,7 @@ import type { Manifest, Pool, RasterLegend } from '../atlas/schemas.ts'
 import { MINOR_CONTOUR_MIN_ZOOM } from '../map/layerStyles.ts'
 import { layerLabel } from './LayerControls.tsx'
 import { LAYERS, type LayerDefinition, type LayerState } from './layerState.ts'
+import { ObservationSwatch } from './ObservationList.tsx'
 
 interface LegendProps {
   manifest: Manifest
@@ -9,12 +10,14 @@ interface LegendProps {
   zoom: number | null
   /** The pools with markers on the map. */
   pools: ReadonlySet<Pool>
+  /** Whether observation markers are on the map; with none, the legend never mentions them. */
+  observations: boolean
   onClose(): void
   className?: string
 }
 
-/** Lists what's on the map now: each drawn layer, then the candidate markers. */
-export function Legend({ manifest, state, zoom, pools, onClose, className = '' }: LegendProps) {
+/** Lists what's on the map now: each drawn layer, the candidate markers, then any observations. */
+export function Legend({ manifest, state, zoom, pools, observations, onClose, className = '' }: LegendProps) {
   const shown = LAYERS.filter(({ key }) => {
     const entry = state.layers[key]
     return entry?.on && entry.status.kind === 'ready'
@@ -48,6 +51,12 @@ export function Legend({ manifest, state, zoom, pools, onClose, className = '' }
           <li className="my-1.5 flex items-center gap-[9px]">
             <span aria-hidden="true" className="mx-1 size-3 flex-none rounded-full border-2 border-sheet bg-marker-context shadow-[0_0_0_1px_#c9bf9f]" />
             Wilderness context candidate
+          </li>
+        )}
+        {observations && (
+          <li data-legend="observations" className="my-1.5 flex items-center gap-[9px] border-t border-line pt-1.5">
+            <ObservationSwatch className="mx-[5px]" />
+            Observation · your field evidence
           </li>
         )}
       </ul>

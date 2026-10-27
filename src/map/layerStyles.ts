@@ -13,6 +13,7 @@ export const PANES = {
   boundaries: 450,
   contourLabels: 460,
   points: 610,
+  observations: 615,
   candidates: 620,
 } as const
 

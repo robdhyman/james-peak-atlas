@@ -18,6 +18,7 @@ import { LayerControls } from './ui/LayerControls.tsx'
 import { initialLayerState, LAYERS, layerReducer } from './ui/layerState.ts'
 import { Legend } from './ui/Legend.tsx'
 import { MethodDialog } from './ui/MethodDialog.tsx'
+import { ObservationList } from './ui/ObservationList.tsx'
 
 type Load = { status: 'loading' } | { status: 'failed'; error: DataError } | { status: 'ready'; atlas: Atlas }
 
@@ -73,6 +74,8 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
   const [zoom, setZoom] = useState<number | null>(null)
   const [probe, setProbe] = useState<LatLng | null>(null)
   const [legendOpen, setLegendOpen] = useState(true)
+  // Only the private build has observations. With none, no observation UI renders at all (ADR 0001).
+  const hasObservations = atlas.observations.length > 0
   // The attempt each layer last started fetching, so an attempt is fetched once.
   const requested = useRef(new Map<string, number>())
 
@@ -182,16 +185,19 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
           candidateCount={visible.length}
           layers={<LayerControls manifest={manifest} state={layerState} dispatch={dispatch} />}
           candidates={
-            <CandidateList
-              manifest={manifest}
-              view={view}
-              visible={visible}
-              log={fieldLog.log}
-              selectedId={selectedId}
-              tools={<FieldLogTools log={fieldLog.log} candidateIds={candidateIds} onReplace={fieldLog.replace} />}
-              onViewChange={setView}
-              onSelect={selectFromList}
-            />
+            <>
+              <CandidateList
+                manifest={manifest}
+                view={view}
+                visible={visible}
+                log={fieldLog.log}
+                selectedId={selectedId}
+                tools={<FieldLogTools log={fieldLog.log} candidateIds={candidateIds} onReplace={fieldLog.replace} />}
+                onViewChange={setView}
+                onSelect={selectFromList}
+              />
+              {hasObservations && <ObservationList observations={atlas.observations} />}
+            </>
           }
         />
       }
@@ -202,6 +208,7 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
         layers={mapLayers}
         overlayOpacity={layerState.opacity / 100}
         candidates={markers}
+        observations={atlas.observations}
         selectedId={selectedId}
         onCandidateClick={(id) => setSelection({ id, opener: 'map' })}
         onLayerLoad={(key, attempt) => dispatch({ type: 'loaded', key, attempt })}
@@ -232,15 +239,25 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
           </div>
         )}
       </div>
-      {/* The canopy readout sits left of the Legend button; both stay beneath the detail card. */}
+      {/* The canopy readout sits left of the map buttons; all stay beneath the detail card. */}
       <div className="pointer-events-none absolute top-5 right-[22px] z-[640] flex items-start justify-end gap-2 max-tablet:inset-x-3 max-tablet:top-3">
         <CanopyReadout source={source} manifest={manifest} point={probe} />
+        {hasObservations && (
+          <button
+            type="button"
+            onClick={() => map.current?.fitObservations()}
+            aria-label="Fit map to observations"
+            className={MAP_BUTTON}
+          >
+            Observations
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setLegendOpen((open) => !open)}
           aria-expanded={legendOpen}
           aria-controls="map-legend"
-          className="pointer-events-auto rounded-[5px] border border-[#d8ded2] bg-sheet/95 px-3 py-2.5 text-[10px] shadow-[0_3px_14px_#233a1c0c] max-tablet:p-[9px] max-tablet:text-[9px]"
+          className={MAP_BUTTON}
         >
           Legend
         </button>
@@ -251,6 +268,7 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
           state={layerState}
           zoom={zoom}
           pools={pools}
+          observations={hasObservations}
           onClose={() => setLegendOpen(false)}
           // On a phone the open detail card takes the legend's place.
           className={selected ? 'max-tablet:hidden' : ''}
@@ -296,6 +314,9 @@ function Layout({ atlas, sidebar, children }: { atlas: Atlas | null; sidebar: Re
     </div>
   )
 }
+
+const MAP_BUTTON =
+  'pointer-events-auto flex-none rounded-[5px] border border-[#d8ded2] bg-sheet/95 px-3 py-2.5 text-[10px] shadow-[0_3px_14px_#233a1c0c] max-tablet:p-[9px] max-tablet:text-[9px]'
 
 const NOTICE = 'rounded-[5px] border border-alert-line bg-alert px-3.5 py-2.5 text-[11px] text-alert-text shadow-panel'
 

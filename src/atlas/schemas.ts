@@ -139,9 +139,20 @@ export const Candidates = z.looseObject({
   features: z.array(PointFeature(CandidateProperties)),
 })
 
+/** The owner's field sightings (ADR 0001): empty in the public build. */
 export const Observations = z.looseObject({
   type: z.literal('FeatureCollection'),
-  features: z.array(PointFeature(z.looseObject({}))),
+  features: z.array(
+    PointFeature(
+      z.looseObject({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        /** When it was seen, as written, e.g. `October 2025`. */
+        observed: z.string().optional(),
+        note: z.string().optional(),
+      }),
+    ),
+  ),
 })
 
 /** Any GeoJSON layer from the manifest. Geometry is left to Leaflet. */

@@ -32,6 +32,7 @@ npm run check:data   # reference data contracts, and public/data matches the ref
 npm run typecheck
 npm test             # Vitest
 npm run build        # dist/, with the reference atlas at dist/reference/
+npm run check:build  # dist/ ships zero observations and no CalTopo map link
 npm run test:e2e     # Playwright against the built site; run `npx playwright install chromium` once
 ```
 
@@ -46,7 +47,17 @@ Open http://127.0.0.1:4173. `npm run check` verifies its assets and data contrac
 
 ## Privacy
 
-The owner's personal field observations are not in this repository or its history ([ADR 0001](docs/adr/0001-withhold-observations-from-public-build.md)). The public build ships an empty observations collection. East Portal, a public parking lot, is the origin.
+The owner's personal field observations are not in this repository or its history ([ADR 0001](docs/adr/0001-withhold-observations-from-public-build.md)). The public build ships an empty observations collection, and with none the atlas shows no observation UI at all. East Portal, a public parking lot, is the origin.
+
+The owner's own copy is a separate private build. It reads the git-ignored `private/observations.geojson` in place of the empty file, and never runs in CI:
+
+```sh
+npm run dev:private       # dev server with observations
+npm run build:private     # dist-private/, never dist/
+npm run test:e2e:private  # Playwright against dist-private/; refuses to run when CI is set
+```
+
+In CI, `check:build` searches `dist/` for CalTopo map links. If the optional `CALTOPO_MAP_ID` repository secret is set, it searches for the bare map ID too.
 
 ## Licences
 

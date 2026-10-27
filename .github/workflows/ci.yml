@@ -35,6 +35,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # ADR 0001: zero observations and no CalTopo reference can deploy.
+      # The optional secret lets the check search for the bare map ID too.
+      - name: Public build check
+        run: npm run check:build
+        env:
+          CALTOPO_MAP_ID: ${{ secrets.CALTOPO_MAP_ID }}
+
       - name: Browser tests
         run: |
           npx playwright install --with-deps chromium

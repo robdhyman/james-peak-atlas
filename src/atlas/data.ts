@@ -204,9 +204,12 @@ async function loadMethod(source: DataSource, file: string): Promise<Result<Meth
 async function loadObservations(source: DataSource, file: string): Promise<Result<readonly Observation[]>> {
   const result = await loadFile(source, file, schema.Observations)
   if (!result.ok) return result
+  const seen = new Set<string>()
   for (const [index, feature] of result.value.features.entries()) {
-    const problem = checkLonLat(feature.geometry.coordinates)
-    if (problem) return fail(file, `feature ${index + 1}`, problem)
+    const { id } = feature.properties
+    const problem = seen.has(id) ? 'duplicate ID' : checkLonLat(feature.geometry.coordinates)
+    if (problem) return fail(file, `feature ${index + 1} (${id})`, problem)
+    seen.add(id)
   }
   return ok(result.value.features)
 }

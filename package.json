@@ -10,12 +10,16 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:private": "vite --mode private",
     "check:data": "node reference/scripts/check.mjs && node scripts/check-data.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "vite build && node scripts/copy-reference.mjs",
+    "build:private": "vite build --mode private",
+    "check:build": "node scripts/check-public-build.mjs",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:private": "playwright test --config playwright.private.config.ts"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

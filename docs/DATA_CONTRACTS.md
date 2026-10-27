@@ -9,7 +9,7 @@
 | Layer manifest | `data/manifest.json` | 18 geospatial layer configurations; runtime controls additionally include candidates and observations (the reference copy's `anchors`) |
 | Candidates | `data/candidates.geojson` | 16 selected hypotheses, six `EP-*` and ten `JP-*` |
 | Origin | `origin` field in `data/manifest.json` | East Portal name and `[longitude, latitude]` (rebuild copy). The reference copy keeps the original `data/anchors.geojson`, holding only the origin |
-| Observations | `data/observations.geojson` | Empty collection in the public build; the owner's points stay in git-ignored `private/` (ADR 0001) |
+| Observations | `data/observations.geojson` | Empty collection in the public build; the owner's points stay in git-ignored `private/` (ADR 0001). Each is a Point with a unique `id` and a `name`, and optional `observed` and `note` text |
 | Formulas | `data/method.json` | Analysis specification, thresholds, scenario and known limitations |
 | Summary | `data/model_summary.json` | Original model counts and source coverage |
 | Canopy inspector | `data/canopy_grid.json` | Base64-encoded one-byte percentage pixels, dimensions and projected extent |

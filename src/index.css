@@ -34,6 +34,10 @@
   --color-marker-context-text: #5b5b3c;
   --color-marker-selected: #173e35;
 
+  /* Observations: the owner's field evidence, the reference atlas's anchor green */
+  --color-observation: #315f4d;
+  --color-observation-ring: #1f4234;
+
   /* Amber accents */
   --color-amber: #c56e28;
   --color-amber-pale: #faeddc;
@@ -219,6 +223,25 @@
   .point-marker.campground > span {
     background: #7a7160;
     box-shadow: 0 0 0 1px #5d5649;
+  }
+
+  /* Observations are evidence: a green diamond, never a candidate's round amber marker. */
+  .observation-marker {
+    border: 0;
+    background: transparent;
+  }
+
+  .observation-marker > span {
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 3px;
+    border: 2px solid #fff;
+    background: var(--color-observation);
+    box-shadow:
+      0 0 0 1px var(--color-observation-ring),
+      0 2px 6px #183a2440;
+    transform: rotate(45deg);
   }
 
   
