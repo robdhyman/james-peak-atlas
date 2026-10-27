@@ -19,8 +19,12 @@ export default defineConfig(({ mode }) => ({
   base: BASE,
   // No SPA fallback: an unknown path 404s in preview, as it does on Pages.
   appType: 'mpa',
-  // The private build gets its own folder, so it can never be the dist/ that deploys.
-  build: { outDir: mode === PRIVATE_MODE ? 'dist-private' : 'dist' },
+  build: {
+    // The private build gets its own folder, so it can never be the dist/ that deploys.
+    outDir: mode === PRIVATE_MODE ? 'dist-private' : 'dist',
+    // Leaflet, React and Zod ship inside the bundle, so their notices ship beside it.
+    license: { fileName: 'third-party-licenses.md' },
+  },
   plugins: [react(), tailwindcss(), privateObservations()],
   test: {
     include: ['src/**/*.test.ts'],

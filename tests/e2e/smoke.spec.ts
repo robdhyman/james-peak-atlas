@@ -34,3 +34,13 @@ test('the reference atlas loads under its subpath with the public-release note',
   await expect(page.locator('#bundleStatus')).toHaveText('Local map bundle · no live tiles')
   expect(failed).toEqual([])
 })
+
+test('the bundled packages’ licences ship beside the bundle', async ({ request }) => {
+  const response = await request.get('third-party-licenses.md')
+  expect(response.ok()).toBe(true)
+  const licences = await response.text()
+  // Leaflet's BSD 2-Clause asks for its copyright notice in binary redistributions.
+  expect(licences).toContain('## leaflet - 1.9.4 (BSD-2-Clause)')
+  expect(licences).toContain('Volodymyr Agafonkin')
+  for (const name of ['react', 'react-dom', 'zod']) expect(licences).toMatch(new RegExp(`## ${name} - \\S+ \\(MIT\\)`))
+})
