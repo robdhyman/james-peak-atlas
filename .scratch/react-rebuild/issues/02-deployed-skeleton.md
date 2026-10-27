@@ -12,7 +12,7 @@
 - [x] One GitHub Actions workflow. On a pull request it runs data check → type check → unit tests → build → browser tests. On main it runs the same steps, then deploys to Pages with the official Pages deploy action.
 - [x] The build output includes the reference atlas under a reference subpath, with a one-line note on it saying observations were removed for public release and its "Your locations" control does nothing.
 - [x] Vitest and Playwright are set up. A Playwright smoke test runs against the built site served at the real subpath, and confirms the shell renders and the reference page loads.
-- [ ] The public GitHub repository exists, the first deploy succeeds, and both the live URL and the reference URL load. The owner creates the repository and turns on Pages, or approves it if an agent does this.
+- [x] The public GitHub repository exists, the first deploy succeeds, and both the live URL and the reference URL load. The owner creates the repository and turns on Pages, or approves it if an agent does this.
 
 ## Comments
 
@@ -26,3 +26,7 @@
 - **Vitest** has no tests yet (`passWithNoTests`). The first atlas-core tests arrive with ticket 03.
 - **Node.** `engines` is `24.x` and CI reads `.nvmrc`. A newer local Node only warns (`EBADENGINE`).
 - **TypeScript 7** (the native compiler) runs the type check.
+
+**Deployed.** The owner approved the agent creating the public repository `robdhyman/james-peak-atlas` and setting Pages to build from GitHub Actions. The first push to `main` ran every CI step and deployed (run 40425705558). In Chromium, https://robdhyman.github.io/james-peak-atlas/ renders the shell, and https://robdhyman.github.io/james-peak-atlas/reference/ shows the note and draws all 16 candidates. Neither page had a failed request. Before pushing, a history search showed "CalTopo" only as a word in prose, with no link or map ID.
+
+**Watch:** GitHub annotated the run to say `ubuntu-latest` is moving to Ubuntu 26 from October 19, 2026. If `playwright install --with-deps` breaks on the new image, pin `runs-on: ubuntu-24.04`.
