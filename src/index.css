@@ -12,7 +12,7 @@
   --color-ink: #193e35;
   --color-ink-soft: #446057;
   --color-ink-raised: #244a40;
-  --color-muted: #718078;
+  --color-muted: #616e67;
 
   /* Paper and rules */
   --color-paper: #f8f7f2;
@@ -27,9 +27,13 @@
   --color-alert-line: #e5d0a7;
   --color-alert-text: #8c642b;
 
-  /* Candidate markers: Nearby amber, Wilderness context pale, selected forest green */
-  --color-marker: #c7762f;
-  --color-marker-ring: #a96426;
+  /*
+   * Candidate markers: Nearby amber, Wilderness context pale, selected forest
+   * green. The amber is a shade darker than the reference's #c7762f so its
+   * numerals reach 4.5:1 (WCAG 2.2 AA).
+   */
+  --color-marker: #a56227;
+  --color-marker-ring: #8c501f;
   --color-marker-context: #e9dfc8;
   --color-marker-context-text: #5b5b3c;
   --color-marker-selected: #173e35;
@@ -74,7 +78,7 @@
     line-height: 1.45;
   }
 
-  :where(button, input, select, a):focus-visible {
+  :where(button, input, select, textarea, a):focus-visible {
     outline: 3px solid var(--color-focus);
     outline-offset: 3px;
   }
@@ -233,7 +237,11 @@
   }
 
   /* Trailheads, campgrounds and springs: small evidence points, not candidates. */
+  /* The icon is a 24 px target (WCAG 2.5.8) around the 17 px symbol. */
   .point-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 0;
     background: transparent;
   }
@@ -283,12 +291,6 @@
       0 2px 6px #183a2440;
     transform: rotate(45deg);
   }
-
-  
-
-  
-
-  
 }
 
 @media (prefers-reduced-motion: reduce) {

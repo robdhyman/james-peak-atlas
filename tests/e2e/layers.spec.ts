@@ -103,7 +103,7 @@ test.describe('evidence layers', () => {
     // The candidates and their scores are untouched: still the six Nearby markers.
     const markers = page.getByRole('button', { name: /^(EP|JP)-\d\d: / })
     await expect(markers).toHaveCount(6)
-    await expect(page.getByRole('button', { name: /^EP-04: / })).toHaveAccessibleName(/scouting index 72 \/ 100$/)
+    await expect(page.getByRole('button', { name: /^EP-04: / })).toHaveAccessibleName(/scouting index 72 \/ 100, marker E4$/)
 
     // A preset also turns off what it doesn't include.
     await control(page, 'GMU boundaries').check()
@@ -183,7 +183,7 @@ test.describe('layer failure', () => {
     await page.goto('./')
 
     const trails = row(page, 'Trails')
-    await expect(trails.getByRole('status')).toContainText('Couldn’t load: data/trails.geojson: request failed')
+    await expect(trails.getByTestId('layer-failure')).toContainText('Couldn’t load: data/trails.geojson: request failed')
     await expect(control(page, 'Trails')).not.toBeChecked()
     // Only trails failed: no full-screen error, and the rest of the atlas works.
     await expect(page.getByRole('alert')).toHaveCount(0)
@@ -194,7 +194,7 @@ test.describe('layer failure', () => {
     await trails.getByRole('button', { name: 'Retry Trails' }).click()
     await expect.poll(() => drawn(page)).toEqual(TERRAIN)
     await expect(control(page, 'Trails')).toBeChecked()
-    await expect(trails.getByRole('status')).toHaveCount(0)
+    await expect(trails.getByTestId('layer-failure')).toHaveCount(0)
   })
 
   test('a blocked raster fails in its own control, and Retry reloads that layer only', async ({ page }) => {
@@ -205,7 +205,7 @@ test.describe('layer failure', () => {
 
     await control(page, 'Canopy cover · 2025').check()
     const canopy = row(page, 'Canopy cover · 2025')
-    await expect(canopy.getByRole('status')).toContainText('Couldn’t load: the image couldn’t be loaded')
+    await expect(canopy.getByTestId('layer-failure')).toContainText('Couldn’t load: the image couldn’t be loaded')
     await expect(control(page, 'Canopy cover · 2025')).not.toBeChecked()
     await expect.poll(() => drawn(page)).toEqual(TERRAIN)
     await expect(page.getByRole('alert')).toHaveCount(0)
@@ -216,7 +216,7 @@ test.describe('layer failure', () => {
     const image = page.locator('img.layer-canopy')
     await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBeGreaterThan(0)
     await expect(control(page, 'Canopy cover · 2025')).toBeChecked()
-    await expect(canopy.getByRole('status')).toHaveCount(0)
+    await expect(canopy.getByTestId('layer-failure')).toHaveCount(0)
     expect(requests).toEqual(['/james-peak-atlas/data/canopy.png'])
   })
 })

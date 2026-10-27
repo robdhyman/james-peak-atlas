@@ -96,7 +96,12 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
   L.control.scale({ position: 'bottomleft', imperial: true, metric: true, maxWidth: 130 }).addTo(map)
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>')
   map.attributionControl.addAttribution('USGS · USFS · NHD · NLCD')
-  for (const [name, zIndex] of Object.entries(PANES)) map.createPane(name).style.zIndex = String(zIndex)
+  // Panes are created top first, so Tab meets the candidates before the
+  // trailheads beneath them; each pane's z-index, not its DOM order, stacks it.
+  for (const [name, zIndex] of Object.entries(PANES).toReversed()) map.createPane(name).style.zIndex = String(zIndex)
+  // Leaflet opens a popup without telling a screen reader, so this says what it shows.
+  const announcer = L.DomUtil.create('p', 'sr-only', container)
+  announcer.setAttribute('role', 'status')
   map.getPane('contourLabels')!.style.pointerEvents = 'none'
   // One canvas for every vector layer but the contours (see vectorPane).
   const vectorRenderer = L.canvas({ pane: 'vectors', tolerance: VECTOR_CLICK_TOLERANCE })
@@ -166,7 +171,7 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
           // A marker is in the tab order only when it opens a popup.
           keyboard: popups,
           ...(name ? { title: name } : {}),
-          icon: L.divIcon({ className, html: `<span>${glyph}</span>`, iconSize: [17, 17], iconAnchor: [8, 8] }),
+          icon: L.divIcon({ className, html: `<span>${glyph}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] }),
         })
         if (!popups) return marker
         // Leaflet makes the icon a button but doesn't open its popup from the
@@ -187,7 +192,11 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
         ? {
             onEachFeature: (feature: GeoJSON.Feature, layer: L.Layer) => {
               const popup = popupFor(feature)
-              if (popup) layer.bindPopup(() => popupElement(popup), { maxWidth: 250, className: 'feature-popup' })
+              if (!popup) return
+              layer
+                .bindPopup(() => popupElement(popup), { maxWidth: 250, className: 'feature-popup' })
+                .on('popupopen', () => (announcer.textContent = popupAnnouncement(popup)))
+                .on('popupclose', () => (announcer.textContent = ''))
             },
           }
         : {}),
@@ -285,7 +294,8 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
       for (const { geometry, properties } of candidates) {
         const [lon, lat] = geometry.coordinates
         const { id, name, pool, score } = properties
-        const label = `${id}: ${name}, scouting index ${Math.round(score)} / 100`
+        // It ends with the icon's own text, so a speech user can say what they see (WCAG 2.5.3).
+        const label = `${id}: ${name}, scouting index ${Math.round(score)} / 100, marker ${shortLabel(id)}`
         const marker = L.marker([lat, lon], {
           pane: 'candidates',
           keyboard: true,
@@ -373,6 +383,7 @@ export function createMapAdapter(container: HTMLElement, events: MapEvents): Map
       clearTimeout(contourTimer)
       probing.abort()
       map.remove()
+      announcer.remove()
       built.clear()
       markers.clear()
     },
@@ -399,6 +410,11 @@ function outlines(data: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
       return feature
     }),
   }
+}
+
+/** A popup's content as one sentence for a screen reader: "Lake Caroline, lake pond. Its cautions." */
+function popupAnnouncement({ title, meta, notes }: FeaturePopup): string {
+  return [`${[title, meta].filter(Boolean).join(', ')}.`, ...notes].join(' ')
 }
 
 /** A popup's content, built from text nodes so that no property value is ever read as HTML. */

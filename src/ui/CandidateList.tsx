@@ -143,7 +143,7 @@ export function CandidateList({ manifest, view, visible, log, selectedId, tools,
         />
       </div>
 
-      <p className="mb-[15px] text-[10px] leading-[1.6] text-[#737f6a]">
+      <p className="mb-[15px] text-[10px] leading-[1.6] text-[#646e5c]">
         Each card’s label is its pool rank: its place by scouting index within its own pool, whatever the list order.
       </p>
 
@@ -165,7 +165,7 @@ export function CandidateList({ manifest, view, visible, log, selectedId, tools,
           ))}
         </ol>
       ) : (
-        <p className="px-2.5 py-[22px] text-center text-[12px] text-[#737f6a]">
+        <p className="px-2.5 py-[22px] text-center text-[12px] text-[#646e5c]">
           No candidates match this view.
           <br />
           Try another field status or search{view.scope === 'nearby' && ', or switch to All'}.
@@ -209,7 +209,7 @@ function CandidateCard({
           {formatScoutingIndex(score)}
         </span>
       </span>
-      <span className="mt-[9px] flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-[#69775f]">
+      <span className="mt-[9px] flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] text-[#626f59]">
         <span>{id}</span>
         <span data-testid="pool-rank" className="rounded-[3px] border border-line-strong bg-paper px-[5px] py-px">
           {formatPoolRank(pool, poolRank)}

@@ -86,13 +86,13 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
         type="button"
         onClick={onClose}
         aria-label="Close candidate detail"
-        className="absolute top-[9px] right-[11px] z-[2] grid size-7 place-items-center rounded-full bg-[#eff2e9] text-[20px] leading-none text-[#6d8160]"
+        className="absolute top-[9px] right-[11px] z-[2] grid size-7 place-items-center rounded-full bg-[#eff2e9] text-[20px] leading-none text-[#5f7154]"
       >
         ×
       </button>
 
       <div className="border-b border-line bg-gradient-to-br from-[#f8f3e7] to-sheet px-[22px] pt-[23px] pr-[42px] pb-[19px] max-tablet:px-5 max-tablet:pt-5 max-tablet:pb-4">
-        <div className="text-[9px] font-bold tracking-[.12em] text-[#9a6630]">SCOUTING CANDIDATE · {id}</div>
+        <div className="text-[9px] font-bold tracking-[.12em] text-[#92612e]">SCOUTING CANDIDATE · {id}</div>
         <h2
           id="candidate-detail-title"
           className="mt-2 mb-3 font-display text-[27px] leading-[1.15] font-normal tracking-[-.03em] max-tablet:text-[24px]"
@@ -116,7 +116,7 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
             </dd>
           </div>
         </dl>
-        <p className="mt-2 text-[10px] leading-normal text-[#6f7a63]">A relative index for comparing candidates. It isn’t a probability.</p>
+        <p className="mt-2 text-[10px] leading-normal text-[#656f5a]">A relative index for comparing candidates. It isn’t a probability.</p>
         <p
           data-testid="route-note"
           className="mt-2 inline-block rounded-[3px] border border-[#d8c4a9] bg-[#f9eedf] px-[5px] py-[3px] text-[9px] tracking-[.02em] text-[#7a5732]"
@@ -153,7 +153,7 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
             )
           })}
         </ul>
-        <p data-testid="weighted-sum-note" className="mt-1 text-[10px] leading-[1.6] text-[#66735c]">
+        <p data-testid="weighted-sum-note" className="mt-1 text-[10px] leading-[1.6] text-[#626f59]">
           The index is a weighted sum, so a strong component can make up for a weak one. Check the bars before
           trusting the total.
         </p>
@@ -164,15 +164,15 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
         >
           {metricCells.map(([value, label, provenance]) => (
             <div key={label} className="flex flex-col-reverse bg-[#f8f9f2] p-2.5">
-              <dt className="mt-0.5 text-[9px] text-[#6f7c61]">
+              <dt className="mt-0.5 text-[9px] text-[#636f57]">
                 {label}
-                <span className="block text-[8px] tracking-[.03em] text-[#8a967b] uppercase">{provenanceLabel[provenance]}</span>
+                <span className="block text-[8px] tracking-[.03em] text-[#656e5a] uppercase">{provenanceLabel[provenance]}</span>
               </dt>
               <dd className="text-[14px] font-semibold text-[#3e5835] tabular-nums">{value}</dd>
             </div>
           ))}
         </dl>
-        <p className="-mt-2.5 mb-[18px] text-[9px] leading-[1.6] text-[#6f7c61]">
+        <p className="-mt-2.5 mb-[18px] text-[9px] leading-[1.6] text-[#636f57]">
           Exact vector figures are measured to the mapped features. Raster estimates come from the model’s grid, so
           they can differ slightly from the map layers and from each other.
         </p>
@@ -216,7 +216,7 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
           ))}
         </ul>
 
-        <p data-testid="route-status" className="my-[15px] text-[10px] leading-[1.6] text-[#6f7c61]">
+        <p data-testid="route-status" className="my-[15px] text-[10px] leading-[1.6] text-[#636f57]">
           <span className="font-semibold">Route status:</span> {properties.route_status}
           <br />
           The location is model-derived. Elk activity here hasn’t been confirmed.
@@ -224,7 +224,7 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
 
         <div className="mt-[18px] border-t border-line pt-4">
           <DetailHeading>Field log</DetailHeading>
-          <label htmlFor="detail-field-status" className="mb-1.5 block text-[10px] text-[#6f7c61]">
+          <label htmlFor="detail-field-status" className="mb-1.5 block text-[10px] text-[#636f57]">
             Field status
           </label>
           <select
@@ -239,7 +239,7 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
               </option>
             ))}
           </select>
-          <label htmlFor="detail-notes" className="mt-3 mb-1.5 block text-[10px] text-[#6f7c61]">
+          <label htmlFor="detail-notes" className="mt-3 mb-1.5 block text-[10px] text-[#636f57]">
             Notes
           </label>
           <textarea
@@ -250,7 +250,7 @@ export function CandidateDetail({ candidate, manifest, method, logEntry, saving,
             placeholder="Water flowing? Tracks? Trail access? Wind or recovery notes…"
             className="min-h-[65px] w-full resize-y rounded-[4px] border border-[#dce3d1] bg-[#fbfcf7] p-[9px] text-[11px] leading-normal text-ink"
           />
-          <p data-testid="field-log-saved" className={`mt-1.5 text-[9px] ${saving ? 'text-[#6f7c61]' : 'font-semibold text-alert-text'}`}>
+          <p data-testid="field-log-saved" className={`mt-1.5 text-[9px] ${saving ? 'text-[#636f57]' : 'font-semibold text-alert-text'}`}>
             {!saving
               ? 'Not saved in this browser. See the notice on the map.'
               : logEntry
@@ -269,7 +269,7 @@ function formatTime(iso: string): string {
 }
 
 function DetailHeading({ children }: { children: string }) {
-  return <h3 className="mb-3 text-[10px] font-bold tracking-[.06em] text-[#6f7c61] uppercase">{children}</h3>
+  return <h3 className="mb-3 text-[10px] font-bold tracking-[.06em] text-[#636f57] uppercase">{children}</h3>
 }
 
 function BulletList({ items }: { items: readonly string[] }) {

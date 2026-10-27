@@ -89,11 +89,10 @@ export function FieldLogTools({ log, candidateIds, onReplace }: { log: FieldLog;
         />
       </div>
 
-      {report?.ok === true && (
-        <p role="status" className="mt-2 text-[10px] text-ink-soft">
-          {report.text}
-        </p>
-      )}
+      {/* Always there, so a screen reader hears the report when it appears. */}
+      <p role="status" className={report?.ok === true ? 'mt-2 text-[10px] text-ink-soft' : 'sr-only'}>
+        {report?.ok === true ? report.text : ''}
+      </p>
       {report?.ok === false && (
         <div role="alert" className="mt-2 rounded-[5px] border border-alert-line bg-alert px-3 py-2 text-[10px] leading-[1.55] text-alert-text">
           <p className="font-semibold">Nothing was imported from {report.filename}:</p>

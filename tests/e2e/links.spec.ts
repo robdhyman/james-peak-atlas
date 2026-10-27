@@ -18,7 +18,7 @@ const list = (page: Page) => page.getByRole('list', { name: 'Candidates' })
 const cardFor = (page: Page, id: string) => page.locator(`#candidate-card-${id}`)
 const marker = (page: Page, id: string) => page.getByRole('button', { name: new RegExp(`^${id}: `) })
 const detail = (page: Page) => page.getByRole('region').filter({ hasText: 'SCOUTING CANDIDATE' })
-const notice = (page: Page) => page.getByRole('status', { name: 'Link notice' })
+const notice = (page: Page) => page.getByRole('note', { name: 'Link notice' })
 const hash = (page: Page) => page.evaluate(() => window.location.hash)
 
 const listedIds = (page: Page) =>

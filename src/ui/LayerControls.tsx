@@ -89,7 +89,7 @@ export function LayerControls({ manifest, state, dispatch }: LayerControlsProps)
       </div>
 
       <div className="mt-6 rounded-[5px] border-l-2 border-[#a6b69e] bg-[#eeefe5] px-3.5 py-[13px]">
-        <span className="text-[8px] font-extrabold tracking-[.09em] text-[#677a5b]">LOW-WATER SCENARIO</span>
+        <span className="text-[8px] font-extrabold tracking-[.09em] text-[#5f7154]">LOW-WATER SCENARIO</span>
         <p className="mt-[7px] text-[10px] leading-[1.65] text-[#5f6d57]">
           Mapped perennial water and lakes receive more weight. A blue line is a place to verify water—not a promise
           it will flow.
@@ -106,7 +106,7 @@ function LayerSection({ title, number, children }: { title: string; number: stri
         <h2 id={`layers-${number}`} className="text-[11px] font-bold tracking-[.02em]">
           {title}
         </h2>
-        <span aria-hidden="true" className="text-[9px] text-[#7e8b80]">
+        <span aria-hidden="true" className="text-[9px] text-[#646e65]">
           {number}
         </span>
       </div>
@@ -159,8 +159,9 @@ function LayerRow({
           </span>
         )}
       </div>
+      {/* The switch is described by this message; the app's own status region announces the failure. */}
       {status.kind === 'failed' && (
-        <div role="status" className="mb-1.5 ml-6 flex items-start gap-2 rounded-[4px] border border-alert-line bg-alert px-2.5 py-1.5 text-[10px] text-alert-text">
+        <div data-testid="layer-failure" className="mb-1.5 ml-6 flex items-start gap-2 rounded-[4px] border border-alert-line bg-alert px-2.5 py-1.5 text-[10px] text-alert-text">
           <p id={`${id}-status`} className="flex-1 [overflow-wrap:anywhere]">
             Couldn’t load: {status.reason}
           </p>

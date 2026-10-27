@@ -1,4 +1,5 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { type FocusEvent, type KeyboardEvent, type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { LatLng } from './atlas/canopy.ts'
 import { type Atlas, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, MANIFEST_URL, resolveUrl } from './atlas/data.ts'
 import type { DataError } from './atlas/data.ts'
@@ -40,7 +41,7 @@ export function App({ source, storage }: { source: DataSource; storage: Storage 
   if (load.status === 'failed') return <FatalError error={load.error} />
   if (load.status === 'loading') {
     return (
-      <Layout atlas={null} sidebar={null} exportMenu={<ExportMenu visible={null} log={{}} />}>
+      <Layout atlas={null} sidebar={null} drawer={null} exportMenu={<ExportMenu visible={null} log={{}} />}>
         <MapLoading />
       </Layout>
     )
@@ -75,6 +76,8 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
   const [zoom, setZoom] = useState<number | null>(null)
   const [probe, setProbe] = useState<LatLng | null>(null)
   const [legendOpen, setLegendOpen] = useState(true)
+  // Below the tablet breakpoint the sidebar is a drawer over the map, closed at first.
+  const [drawerOpen, setDrawerOpen] = useState(false)
   // Only the private build has observations. With none, no observation UI renders at all (ADR 0001).
   const hasObservations = atlas.observations.length > 0
   // The attempt each layer last started fetching, so an attempt is fetched once.
@@ -160,16 +163,25 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
     return () => window.removeEventListener('hashchange', followLink)
   }, [atlas.candidates])
 
+  // A selection closes the drawer, so the detail panel isn't hidden behind it.
+  function select(id: string, opener: Opener) {
+    setSelection({ id, opener })
+    setDrawerOpen(false)
+  }
+
   function selectFromList(id: string) {
-    setSelection({ id, opener: 'list' })
+    select(id, 'list')
     map.current?.reveal(id)
   }
 
   function closeDetail() {
     if (!selection) return
     setSelection(null)
+    // Focus going back to the list needs the drawer open first, or there's nothing to focus.
+    if (selection.opener === 'list' && isDrawer()) flushSync(() => setDrawerOpen(true))
     if (!visible.some(({ candidate }) => candidate.properties.id === selection.id)) {
       // Filtered out by field status, so its card and marker are gone: focus the filter, or its tab when that's hidden.
+      if (isDrawer()) flushSync(() => setDrawerOpen(true))
       const filter = document.getElementById(FIELD_STATUS_FILTER_ID)
       filter?.focus()
       if (document.activeElement !== filter) document.getElementById('candidates-tab')?.focus()
@@ -177,9 +189,20 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
     else map.current?.focusCandidate(selection.id)
   }
 
+  // Screen readers hear about a failure that happens after the page has loaded
+  // from this one region, which is always there; a region that appears along
+  // with its message often isn't read out. The visible notices say the same.
+  const announcement = [
+    ...LAYERS.flatMap((definition) =>
+      layerState.layers[definition.key]?.status.kind === 'failed' ? [`${layerLabel(definition, manifest)} couldn’t load. Retry it in Map layers.`] : [],
+    ),
+    ...(linkProblem ? [`${linkProblem} The default view is open instead.`] : []),
+  ].join(' ')
+
   return (
     <Layout
       atlas={atlas}
+      drawer={{ open: drawerOpen, onChange: setDrawerOpen }}
       exportMenu={<ExportMenu visible={visible} log={fieldLog.log} />}
       sidebar={
         <SidebarTabs
@@ -213,7 +236,7 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
         candidates={markers}
         observations={atlas.observations}
         selectedId={selectedId}
-        onCandidateClick={(id) => setSelection({ id, opener: 'map' })}
+        onCandidateClick={(id) => select(id, 'map')}
         onLayerLoad={(key, attempt) => dispatch({ type: 'loaded', key, attempt })}
         onLayerError={(key, attempt) => dispatch({ type: 'failed', key, attempt, reason: 'the image couldn’t be loaded' })}
         onZoomChange={setZoom}
@@ -229,7 +252,7 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
         )}
         <FieldLogNotices fieldLog={fieldLog} className={NOTICE} />
         {linkProblem && (
-          <div role="status" aria-label="Link notice" className={`${NOTICE} flex items-start gap-3`}>
+          <div role="note" aria-label="Link notice" className={`${NOTICE} flex items-start gap-3`}>
             <p className="flex-1">{linkProblem} The default view is open instead.</p>
             <button
               type="button"
@@ -277,6 +300,9 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
           className={selected ? 'max-tablet:hidden' : ''}
         />
       )}
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       {selected && (
         <CandidateDetail
           candidate={selected}
@@ -292,15 +318,60 @@ function AtlasView({ atlas, source, storage }: { atlas: Atlas; source: DataSourc
   )
 }
 
+/** The sidebar drawer's open state, owned by the loaded atlas; null while it loads. */
+type Drawer = { open: boolean; onChange(open: boolean): void } | null
+
+const DRAWER_ID = 'sidebar'
+const DRAWER_BUTTON_ID = 'sidebar-button'
+
+/** Whether the sidebar is a drawer now: the reference atlas's 800 px breakpoint. */
+function isDrawer(): boolean {
+  return window.matchMedia('(width < 50rem)').matches
+}
+
 /** The page frame. The atlas is null while it loads, which keeps the method button disabled. */
-function Layout({ atlas, sidebar, exportMenu, children }: { atlas: Atlas | null; sidebar: ReactNode; exportMenu: ReactNode; children: ReactNode }) {
+function Layout({
+  atlas,
+  sidebar,
+  drawer,
+  exportMenu,
+  children,
+}: {
+  atlas: Atlas | null
+  sidebar: ReactNode
+  drawer: Drawer
+  exportMenu: ReactNode
+  children: ReactNode
+}) {
+  // Escape closes the drawer and hands focus back to its button, unless a
+  // dialog inside it (Reset log) is taking the Escape for itself.
+  function closeOnEscape(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== 'Escape' || !drawer?.open || !isDrawer()) return
+    if (event.target instanceof Element && event.target.closest('dialog')) return
+    drawer.onChange(false)
+    document.getElementById(DRAWER_BUTTON_ID)?.focus()
+  }
+
+  // The drawer covers the map, so it closes when focus moves out of it:
+  // otherwise Tab would carry focus to markers hidden underneath (WCAG 2.4.11).
+  // A blur to nowhere, such as a tap on the map or the file picker, leaves it open.
+  function closeOnFocusOut(event: FocusEvent<HTMLElement>) {
+    const next = event.relatedTarget
+    if (!drawer?.open || !isDrawer() || !(next instanceof Node) || event.currentTarget.contains(next)) return
+    if (next instanceof Element && next.id === DRAWER_BUTTON_ID) return
+    drawer.onChange(false)
+  }
+
   return (
     <div className="flex h-full flex-col">
-      <Topbar atlas={atlas} exportMenu={exportMenu} />
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <Topbar atlas={atlas} drawer={drawer} exportMenu={exportMenu} />
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <aside
+          id={DRAWER_ID}
           aria-label="Map controls"
-          className="flex w-[326px] flex-none flex-col border-r border-line-strong bg-paper max-tablet:hidden max-desktop:w-[296px] wide:w-[346px]"
+          onKeyDown={closeOnEscape}
+          onBlur={closeOnFocusOut}
+          className={`flex w-[326px] flex-none flex-col border-r border-line-strong bg-paper max-desktop:w-[296px] max-tablet:absolute max-tablet:inset-y-0 max-tablet:left-0 max-tablet:z-[1050] max-tablet:max-w-[calc(100%-48px)] max-tablet:shadow-[9px_0_30px_#18391f22] wide:w-[346px] ${drawer?.open ? '' : 'max-tablet:hidden'}`}
         >
           <div className="px-[23px] pt-6 pb-[19px] max-desktop:px-[19px] wide:px-7">
             <div className="text-[10px] font-bold tracking-[.11em] text-muted">JAMES PEAK WILDERNESS</div>
@@ -376,7 +447,7 @@ function SidebarTabs({
             aria-controls={`${key}-panel`}
             tabIndex={tab === key ? 0 : -1}
             onClick={() => setTab(key)}
-            className="border-b-2 border-transparent pt-[13px] pb-[11px] text-[12px] font-semibold text-[#66756c] aria-selected:border-ink aria-selected:text-ink"
+            className="border-b-2 border-transparent pt-[13px] pb-[11px] text-[12px] font-semibold text-[#616f67] aria-selected:border-ink aria-selected:text-ink"
           >
             {label}
           </button>
@@ -408,10 +479,24 @@ function MapLoading() {
   )
 }
 
-function Topbar({ atlas, exportMenu }: { atlas: Atlas | null; exportMenu: ReactNode }) {
+function Topbar({ atlas, drawer, exportMenu }: { atlas: Atlas | null; drawer: Drawer; exportMenu: ReactNode }) {
   const [methodOpen, setMethodOpen] = useState(false)
   return (
     <header className="relative z-[1100] flex h-[86px] flex-none items-center gap-6 bg-ink px-7 text-topbar-text max-desktop:gap-4 max-desktop:px-5 max-tablet:h-[72px] max-tablet:gap-[11px] max-tablet:px-[15px]">
+      <button
+        type="button"
+        id={DRAWER_BUTTON_ID}
+        disabled={!drawer}
+        aria-label="Map controls"
+        aria-expanded={drawer?.open ?? false}
+        aria-controls={DRAWER_ID}
+        onClick={() => drawer?.onChange(!drawer.open)}
+        className="-mx-1 hidden size-[34px] flex-none place-items-center text-paper disabled:opacity-50 max-tablet:grid"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[23px] fill-none stroke-current stroke-[1.7] [stroke-linecap:round]">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
       <div className="flex flex-none items-center gap-[13px]">
         <svg
           viewBox="0 0 40 34"

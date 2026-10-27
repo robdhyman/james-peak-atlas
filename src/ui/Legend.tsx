@@ -33,7 +33,7 @@ export function Legend({ manifest, state, zoom, pools, observations, onClose, cl
         <h2 id="map-legend-heading" className="text-[8px] font-extrabold tracking-[.13em] text-[#5f7059]">
           ON THE MAP
         </h2>
-        <button type="button" onClick={onClose} aria-label="Hide legend" className="px-1 text-[17px] leading-none text-[#7c8873]">
+        <button type="button" onClick={onClose} aria-label="Hide legend" className="px-1 text-[17px] leading-none text-[#646e5d]">
           ×
         </button>
       </div>
@@ -75,7 +75,7 @@ function LegendEntry({ definition, manifest, zoom }: { definition: LayerDefiniti
       <li data-legend={key} className="my-2.5">
         <span className="font-semibold">{label}</span>
         <div aria-hidden="true" className="mt-2 mb-[3px] h-1.5 rounded-[3px]" style={{ background: `linear-gradient(90deg, ${ramp.colors.join(', ')})` }} />
-        <div className="flex justify-between text-[9px] text-[#647760]">
+        <div className="flex justify-between text-[9px] text-[#5f705b]">
           <span>{ramp.min}</span>
           <span>{ramp.max}</span>
         </div>
@@ -102,7 +102,7 @@ function LegendEntry({ definition, manifest, zoom }: { definition: LayerDefiniti
 function ContourNote({ zoom }: { zoom: number | null }) {
   const minorShown = zoom !== null && zoom >= MINOR_CONTOUR_MIN_ZOOM
   return (
-    <p data-testid="contour-zoom-note" className="mt-1 ml-[29px] max-w-[200px] text-[9px] text-[#6d7a66]">
+    <p data-testid="contour-zoom-note" className="mt-1 ml-[29px] max-w-[200px] text-[9px] text-[#636f5d]">
       {minorShown
         ? 'Every 40 ft, with heavier lines every 200 ft.'
         : 'Only the 200 ft lines show at this zoom. Zoom in to see every 40 ft contour.'}
