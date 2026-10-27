@@ -200,7 +200,9 @@ test.describe('keyboard', () => {
     await page.goto('./')
     await expect(page.getByRole('tab', { name: 'Map layers' })).toBeVisible()
 
-    // Tab to the panel tabs, then arrow across to Candidates.
+    // Past the top bar's method button to the panel tabs, then arrow across to Candidates.
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Method and sources' })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('tab', { name: 'Map layers' })).toBeFocused()
     await page.keyboard.press('ArrowRight')
