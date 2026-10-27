@@ -3,6 +3,7 @@ import type { LatLng } from './atlas/canopy.ts'
 import { type Atlas, type DataSource, formatDataError, loadAtlas, loadGeoJsonLayer, MANIFEST_URL, resolveUrl } from './atlas/data.ts'
 import type { DataError } from './atlas/data.ts'
 import type { FeatureCollection } from './atlas/schemas.ts'
+import { decodeViewHash, encodeViewHash } from './candidates/viewLink.ts'
 import { type ListView, visibleCandidates } from './candidates/visibleList.ts'
 import type { MapLayer } from './map/mapAdapter.ts'
 import { type MapHandle, MapView } from './map/MapView.tsx'
@@ -45,14 +46,21 @@ type Opener = 'list' | 'map'
 
 /**
  * The loaded atlas. Its root owns the layer state (what's on, overlay
- * strength, and each layer's status), the list view and the selection.
+ * strength, and each layer's status), the list view and the selection. The
+ * URL hash carries the selection, scope and sort, so a link reopens them.
  */
 function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   const { manifest } = atlas
   const [layerState, dispatch] = useReducer(layerReducer, undefined, initialLayerState)
   const [vectors, setVectors] = useState<Readonly<Record<string, FeatureCollection>>>({})
-  const [view, setView] = useState<ListView>({ scope: 'nearby', sort: null, search: '' })
-  const [selection, setSelection] = useState<{ id: string; opener: Opener } | null>(null)
+  // The link this page was opened with; a broken one opens the default view with a notice.
+  const [opened] = useState(() => decodeViewHash(window.location.hash, atlas.candidates))
+  const [view, setView] = useState<ListView>({ scope: opened.view.scope, sort: opened.view.sort, search: '' })
+  // A linked candidate counts as opened from the map, so closing its panel focuses its marker.
+  const [selection, setSelection] = useState<{ id: string; opener: Opener } | null>(
+    opened.view.candidate ? { id: opened.view.candidate, opener: 'map' } : null,
+  )
+  const [linkProblem, setLinkProblem] = useState(opened.problem)
   const map = useRef<MapHandle>(null)
   const [zoom, setZoom] = useState<number | null>(null)
   const [probe, setProbe] = useState<LatLng | null>(null)
@@ -108,6 +116,34 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
   if (selection && !selected) setSelection(null)
   const selectedId = selected ? selected.properties.id : null
 
+  // The view is the link. It's replaced, not pushed, so it adds no history
+  // entries, and layer changes never touch it.
+  const hash = encodeViewHash({ scope: view.scope, sort: view.sort, candidate: selectedId })
+  useEffect(() => {
+    if (window.location.hash === hash) return
+    history.replaceState(history.state, '', hash || `${window.location.pathname}${window.location.search}`)
+  }, [hash])
+
+  // A linked candidate is revealed after the commit that puts its marker on
+  // the map: the map's own effects run first, and a link can change the scope.
+  const [linkReveal, setLinkReveal] = useState(opened.view.candidate ? { id: opened.view.candidate } : null)
+  useEffect(() => {
+    if (linkReveal) map.current?.reveal(linkReveal.id)
+  }, [linkReveal])
+
+  // Follow a link pasted into this tab.
+  useEffect(() => {
+    function followLink() {
+      const link = decodeViewHash(window.location.hash, atlas.candidates)
+      setView({ scope: link.view.scope, sort: link.view.sort, search: '' })
+      setSelection(link.view.candidate ? { id: link.view.candidate, opener: 'map' } : null)
+      setLinkProblem(link.problem)
+      setLinkReveal(link.view.candidate ? { id: link.view.candidate } : null)
+    }
+    window.addEventListener('hashchange', followLink)
+    return () => window.removeEventListener('hashchange', followLink)
+  }, [atlas.candidates])
+
   function selectFromList(id: string) {
     setSelection({ id, opener: 'list' })
     map.current?.reveal(id)
@@ -124,6 +160,8 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
     <Layout
       sidebar={
         <SidebarTabs
+          // A shared view is about candidates, so its link opens on their list.
+          initialTab={encodeViewHash(opened.view) ? 'candidates' : 'layers'}
           candidateCount={visible.length}
           layers={<LayerControls manifest={manifest} state={layerState} dispatch={dispatch} />}
           candidates={
@@ -152,16 +190,28 @@ function AtlasView({ atlas, source }: { atlas: Atlas; source: DataSource }) {
         onZoomChange={setZoom}
         onProbe={setProbe}
       />
-      {atlas.warnings.length > 0 && (
-        <div
-          role="status"
-          className="absolute top-[77px] left-[23px] z-[600] max-w-[430px] rounded-[5px] border border-alert-line bg-alert px-3.5 py-2.5 text-[11px] text-alert-text shadow-panel max-tablet:inset-x-3 max-tablet:top-16"
-        >
-          {atlas.warnings.map((warning) => (
-            <p key={warning.file}>Couldn’t load {formatDataError(warning)}</p>
-          ))}
-        </div>
-      )}
+      <div className="absolute top-[77px] left-[23px] z-[600] flex max-w-[430px] flex-col gap-2 max-tablet:inset-x-3 max-tablet:top-16 max-tablet:max-w-none">
+        {atlas.warnings.length > 0 && (
+          <div role="status" className={NOTICE}>
+            {atlas.warnings.map((warning) => (
+              <p key={warning.file}>Couldn’t load {formatDataError(warning)}</p>
+            ))}
+          </div>
+        )}
+        {linkProblem && (
+          <div role="status" aria-label="Link notice" className={`${NOTICE} flex items-start gap-3`}>
+            <p className="flex-1">{linkProblem} The default view is open instead.</p>
+            <button
+              type="button"
+              aria-label="Dismiss link notice"
+              onClick={() => setLinkProblem(null)}
+              className="-my-0.5 px-1 text-[15px] leading-none"
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
       {/* The canopy readout sits left of the Legend button; both stay beneath the detail card. */}
       <div className="pointer-events-none absolute top-5 right-[22px] z-[640] flex items-start justify-end gap-2 max-tablet:inset-x-3 max-tablet:top-3">
         <CanopyReadout source={source} manifest={manifest} point={probe} />
@@ -216,11 +266,23 @@ function Layout({ sidebar, children }: { sidebar: ReactNode; children: ReactNode
   )
 }
 
+const NOTICE = 'rounded-[5px] border border-alert-line bg-alert px-3.5 py-2.5 text-[11px] text-alert-text shadow-panel'
+
 type Tab = 'layers' | 'candidates'
 
 /** The sidebar's two panels, as ARIA tabs: arrow keys move between them. */
-function SidebarTabs({ layers, candidates, candidateCount }: { layers: ReactNode; candidates: ReactNode; candidateCount: number }) {
-  const [tab, setTab] = useState<Tab>('layers')
+function SidebarTabs({
+  initialTab,
+  layers,
+  candidates,
+  candidateCount,
+}: {
+  initialTab: Tab
+  layers: ReactNode
+  candidates: ReactNode
+  candidateCount: number
+}) {
+  const [tab, setTab] = useState<Tab>(initialTab)
   const tabs: readonly [key: Tab, label: ReactNode][] = [
     ['layers', 'Map layers'],
     [
