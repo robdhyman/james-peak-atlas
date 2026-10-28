@@ -1,13 +1,13 @@
 {
   "runId": "figma-library-2026-10-28",
   "scope": "full-library",
-  "step": "components/detail-and-sidebar",
+  "step": "screens",
   "figma": {
     "fileKey": "FqbSZ8tKFAU7j8sInSFwQ7",
     "originalPage": {
       "Page 1": "0:1"
     },
-    "sessionId": "40aec159-7019-4217-9bcc-4e643749a853",
+    "sessionId": "5c92d5e9-ece5-4238-a33a-264d95dede98",
     "modeId": "8:0",
     "modeName": "Default"
   },
@@ -105,7 +105,9 @@
       "Source row": "20:167",
       "Method dialog": "20:170",
       "Fatal error": "20:288",
-      "Map loading": "20:307"
+      "Map loading": "20:307",
+      "Detail panel": "24:131",
+      "Sidebar": "28:233"
     },
     "componentSets": {
       "Candidate marker": "14:25",
@@ -117,7 +119,8 @@
     "screens": {},
     "frames": {
       "Foundations / Specimen sheet": "11:3",
-      "Icons and markers / Review": "14:49"
+      "Icons and markers / Review": "14:49",
+      "Components / Review": "29:363"
     },
     "properties": {
       "Candidate marker.Label": "Label#14:0",
@@ -134,7 +137,52 @@
       "Candidate card.ID": "ID#18:26",
       "Candidate card.Round trip": "Round trip#18:39",
       "Candidate card.Caution": "Caution#18:52",
-      "Callout.Show eyebrow": "Show eyebrow#17:0"
+      "Callout.Show eyebrow": "Show eyebrow#17:0",
+      "Detail panel.Eyebrow": "Eyebrow#24:0",
+      "Detail panel.Name": "Name#24:1",
+      "Detail panel.Location": "Location#24:2",
+      "Detail panel.Index": "Index#24:3",
+      "Detail panel.Route status": "Route status#24:4",
+      "Detail panel.Saved line": "Saved line#24:5",
+      "Sidebar.Map layers panel": "Map layers panel#28:0",
+      "Sidebar.Candidates panel": "Candidates panel#28:1"
+    },
+    "nodes": {
+      "Detail panel / close": "24:316",
+      "Detail panel / Component bars": [
+        "24:157",
+        "24:165",
+        "24:173",
+        "24:181"
+      ],
+      "Detail panel / Metric tiles": [
+        "24:194",
+        "24:198",
+        "24:203",
+        "24:207",
+        "24:212",
+        "24:216",
+        "24:221",
+        "24:225"
+      ],
+      "Sidebar / Map layers panel": "28:248",
+      "Sidebar / Candidates panel": "28:435",
+      "Sidebar / Candidate cards": [
+        "28:481",
+        "28:497",
+        "28:513",
+        "28:529",
+        "28:545",
+        "28:561"
+      ],
+      "Sidebar / compact model-score rows": [
+        "28:398",
+        "28:406",
+        "28:414"
+      ],
+      "Review / Sidebar · Map layers": "29:962",
+      "Review / Detail panel": "29:1425",
+      "Review / Method dialog": "29:1650"
     }
   },
   "drift": [
@@ -147,6 +195,11 @@
       "literal": "#616f67",
       "token": "color/muted",
       "component": "Tabs"
+    },
+    {
+      "literal": "#e7ebdf",
+      "token": "color/map-canvas",
+      "component": "Detail panel"
     }
   ],
   "pendingValidations": [],
@@ -160,7 +213,11 @@
     "components/foundations-dependents",
     "components/second-tier",
     "components/candidate-card",
-    "components/overlays"
+    "components/overlays",
+    "components/detail-panel",
+    "components/sidebar",
+    "components/review-frame",
+    "components"
   ],
   "notes": [
     "Spec/inventory disagreement: spec counts 35 colour variables; src/index.css @theme defines 30 colour tokens (2 fonts + 30 colours + 1 shadow + 3 breakpoints = 36 entries). Built 30, one for one with the theme (story 7). Counts check uses 30.",
@@ -177,7 +234,14 @@
     "Candidate card: position and pool rank are text properties of the exposed nested Position badge and Pool rank chip (Figma cannot bind a parent TEXT property into a nested instance); name, index, ID and round trip are direct properties; Caution is a boolean on the chip row. Per-status chip colours are instance overrides inside each variant.",
     "Legend, detail and method closes reuse Button/Kind=Dismiss with text size and colour overrides (17 px #646e5d; 20 px #5f7154 in a 28 px #eff2e9 circle; 22 px ink-soft in a 34 px paper circle). Fatal error's Reload uses Kind=Primary (code: pad 13/10, 12 px topbar-text).",
     "Method dialog paragraphs with in-line bold ranges report fontName as mixed; the font check must read styled segments.",
-    "HANDOFF 2026-10-28: session moved to the cloud mid-phase-2. Remaining: Detail panel, Sidebar, Components review frame, phase-2 commit, screens (phase 3), checks (phase 4), retro. Hand-over note in the side-session notes folder (figma-library-handoff.md)."
+    "HANDOFF 2026-10-28: session moved to the cloud mid-phase-2. Remaining: Detail panel, Sidebar, Components review frame, phase-2 commit, screens (phase 3), checks (phase 4), retro. Hand-over note in the side-session notes folder (figma-library-handoff.md).",
+    "RUNTIME LIMIT (cloud session, 2026-10-28): resize() on a node nested inside an instance is silently ignored (width unchanged, no error) while padding, itemSpacing, layoutSizing FILL/FIXED, fills, strokes, cornerRadius, effects, fontSize, fontName, letterSpacing and paragraphSpacing overrides on nested children all apply, and resizing the instance itself works. Component bar therefore sets its fill width through the track: the fill rectangle is FILL-width and the nested track frame’s paddingRight = width × (1 − score/100) (main component default 80%, i.e. paddingRight 57.2 of 286). The spec’s “fill width set by resizing” is amended in spec.md; a designer in Figma desktop can still drag the fill.",
+    "Detail panel (24:131): 330 wide, hugs its content (2048 px with EP-04). Header gradient stops are literal #f8f3e7 → #fffefa (gradient stops cannot bind to variables). The Pool rank chip in the header carries the inventory’s detail-only overrides (pad 3/6, 11 px text) as instance overrides; the cautions Callout overrides pad 9/11, gap 3, radius 0, eyebrow 9 px / 4% tracking and body paragraphSpacing 6 (one paragraph per caution); the field log Select row overrides the nested select to #ffffff fill, #d3ddc8 stroke and pad 8/10. Vertical margins from the CSS are encoded as padding on named wrapper frames (CSS margin collapse applied). The Route status property is one text node whose first 13 characters are Semi Bold; an instance that sets a different value may lose that range (Figma keeps styling only for unchanged text). Exposed nested instances (19): Pool rank chip, Caution chip, 4 Component bars, 8 Metric tiles, Callout / Cautions, 3 Planning chips, Select row / Field status.",
+    "Segmented control main component (15:44) corrected during phase 2: the source’s preset buttons are `px-0.5 py-1.5` (2 px horizontal, 6 px vertical). The phase-2 local build had read the inventory’s “pad 2/6” (horizontal/vertical per its own notation) the other way round. Control height is now 35 (was 27). The scope toggle in the Sidebar is an instance with overrides: pad 8/5, segment radius 5, fill #e9ede5 (no token within 2 per channel), no stroke, control radius 8, segment 3 hidden, labels Nearby / All in Semi Bold, pressed pill = sheet with 0 1px 4px #183a2420.",
+    "Sidebar (28:233): fixed 326 × 814 (900 − 86 header), paper fill, 1 px line-strong right border, clips. Sidebar header and Tabs (exposed) on top; the two tab panels are FILL-height frames that clip, mirroring the app’s scrolling tabpanel, so the Candidates panel shows the first two and a half cards and the Map layers panel ends inside the model-scores group, exactly as the 814 px viewport would. Booleans “Map layers panel” (default false) and “Candidates panel” (default true) toggle their visibility. Compact model-score rows: Layer switch Off instances resized to 29 px (instance resize works), nested row set to FILL height, label 11 px. Layer swatch colours are instance fill overrides from inventory section 39; Mapped water binds to color/water exactly. Checked rows follow the Terrain preset (trails, roads, trailheads, boundary, contours, relief, water).",
+    "Candidate list in the Sidebar: scout order from public/data/candidates.geojson (EP-04, EP-05, EP-03, EP-01, EP-06, EP-02), position badge = list position, pool rank chip = Nearby #rank, index = Math.round(score) / 100, round trip = roundtrip_lower_bound_miles.toFixed(1) + ' mi minimum round trip' (format.ts). EP-04 is State=Selected; all Field status=To scout. No JP context candidates, no observation data.",
+    "Review frame “Components / Review” (29:363, 1840 × 4785, paper fill, 9 px muted uppercase captions bound to font/sans): Top bar; every plain component once; all 7 Button kinds with realistic labels; all 4 Layer switch states; both Notice states; Legend panel, Export menu panel, Map loading; Candidate card in 4 of its 12 variants (Default/To scout, Selected/Scouted, Focused/Camera placed, Default/Ruled out); Confirm dialog, Fatal error; the Sidebar twice (Candidates and Map layers, with the exposed Tabs switched); Detail panel; Method dialog. Main components stay outside the frame.",
+    "Pages are untouched in phase 2 except the Components page; screenshots are fetched inline (base64) because the environment’s network policy denies www.figma.com for curl."
   ],
   "checks": {
     "foundations": {
@@ -253,7 +317,42 @@
       "candidateCardAxes": [
         "State: Default, Selected, Focused",
         "Field status: To scout, Scouted, Camera placed, Ruled out"
-      ]
+      ],
+      "detailPanel": {
+        "id": "24:131",
+        "size": [
+          330,
+          2048
+        ],
+        "textNodes": 76,
+        "exposedNested": 19,
+        "barFillWidths": [
+          227.2,
+          235.72,
+          90.88,
+          284
+        ],
+        "trackWidth": 284
+      },
+      "sidebar": {
+        "id": "28:233",
+        "size": [
+          326,
+          814
+        ],
+        "textNodes": 97,
+        "cards": 6,
+        "compactRowHeight": 29,
+        "scopeToggleHeight": 37
+      },
+      "reviewFrame": {
+        "id": "29:363",
+        "size": [
+          1840,
+          4785
+        ],
+        "instances": 57
+      }
     }
   },
   "fonts": {
