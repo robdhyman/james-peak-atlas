@@ -1,7 +1,7 @@
 {
   "runId": "figma-library-2026-10-28",
   "scope": "full-library",
-  "step": "components/icons-and-markers",
+  "step": "components/detail-and-sidebar",
   "figma": {
     "fileKey": "FqbSZ8tKFAU7j8sInSFwQ7",
     "originalPage": {
@@ -59,21 +59,108 @@
       "Screens": "8:4",
       "Reference": "8:5"
     },
-    "components": {},
-    "componentSets": {},
+    "components": {
+      "Icon / Menu": "14:2",
+      "Icon / Brand mark": "14:5",
+      "Icon / Magnifier": "14:9",
+      "Icon / Download": "14:13",
+      "Observation marker": "14:36",
+      "Observation swatch": "14:39",
+      "Candidate tooltip": "14:42",
+      "Contour label": "14:47",
+      "Count chip": "15:2",
+      "Position badge": "15:4",
+      "Pool rank chip": "15:6",
+      "Field status chip": "15:8",
+      "Caution chip": "15:10",
+      "Planning chip": "15:12",
+      "Select row": "15:31",
+      "Callout": "15:38",
+      "Section header": "15:41",
+      "Segmented control": "15:44",
+      "Detail heading": "15:54",
+      "Bullet item": "15:56",
+      "Component bar": "15:60",
+      "Metric tile": "15:68",
+      "Export item": "15:72",
+      "Legend symbol row": "15:74",
+      "Legend ramp row": "15:81",
+      "Top bar": "16:3",
+      "Sidebar header": "16:28",
+      "Tabs": "16:31",
+      "Search field": "16:42",
+      "Field log tools": "16:47",
+      "Empty state": "16:55",
+      "Overlay strength": "16:57",
+      "Notice": "16:114",
+      "Canopy readout": "16:118",
+      "Feature popup": "16:123",
+      "Zoom control": "16:131",
+      "Scale bar": "16:136",
+      "Attribution": "16:141",
+      "Legend panel": "20:64",
+      "Export menu panel": "20:142",
+      "Confirm dialog": "20:151",
+      "Weight tile": "20:164",
+      "Source row": "20:167",
+      "Method dialog": "20:170",
+      "Fatal error": "20:288",
+      "Map loading": "20:307"
+    },
+    "componentSets": {
+      "Candidate marker": "14:25",
+      "Point marker": "14:35",
+      "Button": "15:30",
+      "Layer switch": "16:113",
+      "Candidate card": "18:208"
+    },
     "screens": {},
     "frames": {
-      "Foundations / Specimen sheet": "11:3"
+      "Foundations / Specimen sheet": "11:3",
+      "Icons and markers / Review": "14:49"
+    },
+    "properties": {
+      "Candidate marker.Label": "Label#14:0",
+      "Candidate tooltip.Text": "Text#14:4",
+      "Contour label.Text": "Text#14:5",
+      "Button.Label": "Label#15:6",
+      "Button.Icon": "Icon#15:14",
+      "Layer switch.Label": "Label#16:21",
+      "Layer switch.Line swatch": "Line swatch#16:26",
+      "Layer switch.Point swatch": "Point swatch#16:31",
+      "Layer switch.Failure": "Failure#16:36",
+      "Candidate card.Name": "Name#18:0",
+      "Candidate card.Index": "Index#18:13",
+      "Candidate card.ID": "ID#18:26",
+      "Candidate card.Round trip": "Round trip#18:39",
+      "Candidate card.Caution": "Caution#18:52",
+      "Callout.Show eyebrow": "Show eyebrow#17:0"
     }
   },
-  "drift": [],
+  "drift": [
+    {
+      "literal": "#f8f9f2",
+      "token": "color/paper",
+      "component": "Metric tile"
+    },
+    {
+      "literal": "#616f67",
+      "token": "color/muted",
+      "component": "Tabs"
+    }
+  ],
   "pendingValidations": [],
   "completedSteps": [
     "foundations/pages",
     "foundations/variables",
     "foundations/effect-style",
     "foundations/specimen-sheet",
-    "foundations"
+    "foundations",
+    "components/icons-and-markers",
+    "components/foundations-dependents",
+    "components/second-tier",
+    "components/candidate-card",
+    "components/overlays"
   ],
   "notes": [
     "Spec/inventory disagreement: spec counts 35 colour variables; src/index.css @theme defines 30 colour tokens (2 fonts + 30 colours + 1 shadow + 3 breakpoints = 36 entries). Built 30, one for one with the theme (story 7). Counts check uses 30.",
@@ -83,7 +170,14 @@
     "Weight mapping: 400 Regular, 600 Semibold, 700/750/800 Bold (SF Pro Heavy exists but the spec allows only Regular, Semibold, Bold).",
     "FONT SUBSTITUTION (build decision, 2026-10-28): the spec's body face SF Pro appears in figma.listAvailableFontsAsync() but cannot be loaded or rendered in the build runtime: every SF Pro text node reports hasMissingFont=true and width 0, bound or unbound, while Literata renders. Inter (present, the metric stand-in for SF) is used for body text instead. font/sans holds the value 'Inter' so one edit in Figma desktop (where SF Pro is installed) switches every bound text node back; the Inter style 'Semi Bold' corresponds to SF Pro 'Semibold'. The font assertion check therefore accepts Literata and Inter. First SF Pro sheet (9:2) was removed and rebuilt as 11:3.",
     "Text recipe: resize() reverts textAutoResize to fixed, so wrapping text sets HEIGHT again after resize+characters (helpers patched; specimen fixed in place).",
-    "inventory.md is committed alongside spec.md and state.json in the phase-1 commit because the spec names it as a companion; it is not otherwise changed."
+    "inventory.md is committed alongside spec.md and state.json in the phase-1 commit because the spec names it as a companion; it is not otherwise changed.",
+    "Wiring a TEXT property to a variant's text layer replaces each variant's characters with the property default (Button variants all read 'Label'); instances set their own label, as the screens do.",
+    "Nested instances exposed (isExposedInstance): Export button in Top bar, Count chip in Tabs, so their text properties are editable from the parent instance.",
+    "Zoom control glyphs are Inter Bold (Leaflet uses Lucida Console); formula text in the Method dialog is Inter (code uses a mono stack): only Literata and Inter are allowed in the file.",
+    "Candidate card: position and pool rank are text properties of the exposed nested Position badge and Pool rank chip (Figma cannot bind a parent TEXT property into a nested instance); name, index, ID and round trip are direct properties; Caution is a boolean on the chip row. Per-status chip colours are instance overrides inside each variant.",
+    "Legend, detail and method closes reuse Button/Kind=Dismiss with text size and colour overrides (17 px #646e5d; 20 px #5f7154 in a 28 px #eff2e9 circle; 22 px ink-soft in a 34 px paper circle). Fatal error's Reload uses Kind=Primary (code: pad 13/10, 12 px topbar-text).",
+    "Method dialog paragraphs with in-line bold ranges report fontName as mixed; the font check must read styled segments.",
+    "HANDOFF 2026-10-28: session moved to the cloud mid-phase-2. Remaining: Detail panel, Sidebar, Components review frame, phase-2 commit, screens (phase 3), checks (phase 4), retro. Hand-over note in the side-session notes folder (figma-library-handoff.md)."
   ],
   "checks": {
     "foundations": {
@@ -121,6 +215,45 @@
         "wrappedTextFixed": 20,
         "sheetHeight": 2783
       }
+    },
+    "iconsAndMarkers": {
+      "candidateMarkerVariants": [
+        "Pool=Nearby",
+        "Pool=Context",
+        "Pool=Selected"
+      ],
+      "pointMarkerVariants": [
+        "Kind=Trailhead",
+        "Kind=Campground",
+        "Kind=Spring"
+      ],
+      "textNodes": 32,
+      "families": [
+        "Inter"
+      ],
+      "drift": 0
+    },
+    "components": {
+      "buttonVariants": [
+        "Kind=Export",
+        "Kind=Primary",
+        "Kind=Secondary",
+        "Kind=Map",
+        "Kind=Text link",
+        "Kind=Retry",
+        "Kind=Dismiss"
+      ],
+      "layerSwitchVariants": [
+        "State=Off",
+        "State=Checked",
+        "State=Loading",
+        "State=Failed"
+      ],
+      "candidateCardVariants": 12,
+      "candidateCardAxes": [
+        "State: Default, Selected, Focused",
+        "Field status: To scout, Scouted, Camera placed, Ruled out"
+      ]
     }
   },
   "fonts": {
