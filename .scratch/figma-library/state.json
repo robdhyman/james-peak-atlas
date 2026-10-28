@@ -1,0 +1,148 @@
+{
+  "runId": "figma-library-2026-10-28",
+  "scope": "full-library",
+  "step": "components/icons-and-markers",
+  "figma": {
+    "fileKey": "FqbSZ8tKFAU7j8sInSFwQ7",
+    "originalPage": {
+      "Page 1": "0:1"
+    },
+    "sessionId": "40aec159-7019-4217-9bcc-4e643749a853",
+    "modeId": "8:0",
+    "modeName": "Default"
+  },
+  "entities": {
+    "collections": {
+      "Atlas": "VariableCollectionId:8:6"
+    },
+    "variables": {
+      "color/ink": "VariableID:8:7",
+      "color/ink-soft": "VariableID:8:8",
+      "color/ink-raised": "VariableID:8:9",
+      "color/muted": "VariableID:8:10",
+      "color/paper": "VariableID:8:11",
+      "color/sheet": "VariableID:8:12",
+      "color/line": "VariableID:8:13",
+      "color/line-strong": "VariableID:8:14",
+      "color/map": "VariableID:8:15",
+      "color/map-canvas": "VariableID:8:16",
+      "color/alert": "VariableID:8:17",
+      "color/alert-line": "VariableID:8:18",
+      "color/alert-text": "VariableID:8:19",
+      "color/marker": "VariableID:8:20",
+      "color/marker-ring": "VariableID:8:21",
+      "color/marker-context": "VariableID:8:22",
+      "color/marker-context-text": "VariableID:8:23",
+      "color/marker-selected": "VariableID:8:24",
+      "color/observation": "VariableID:8:25",
+      "color/observation-ring": "VariableID:8:26",
+      "color/amber": "VariableID:8:27",
+      "color/amber-pale": "VariableID:8:28",
+      "color/amber-dot": "VariableID:8:29",
+      "color/focus": "VariableID:8:30",
+      "color/topbar-text": "VariableID:8:31",
+      "color/topbar-eyebrow": "VariableID:8:32",
+      "color/topbar-muted": "VariableID:8:33",
+      "color/scenario": "VariableID:8:34",
+      "color/brand-mark": "VariableID:8:35",
+      "color/water": "VariableID:8:36",
+      "font/display": "VariableID:8:37",
+      "font/sans": "VariableID:8:38"
+    },
+    "styles": {
+      "shadow/panel": "S:073eb8ce634a45e0ebdfacb4b8c96f8480b3d822,"
+    },
+    "pages": {
+      "Foundations": "0:1",
+      "Components": "8:2",
+      "Icons and markers": "8:3",
+      "Screens": "8:4",
+      "Reference": "8:5"
+    },
+    "components": {},
+    "componentSets": {},
+    "screens": {},
+    "frames": {
+      "Foundations / Specimen sheet": "11:3"
+    }
+  },
+  "drift": [],
+  "pendingValidations": [],
+  "completedSteps": [
+    "foundations/pages",
+    "foundations/variables",
+    "foundations/effect-style",
+    "foundations/specimen-sheet",
+    "foundations"
+  ],
+  "notes": [
+    "Spec/inventory disagreement: spec counts 35 colour variables; src/index.css @theme defines 30 colour tokens (2 fonts + 30 colours + 1 shadow + 3 breakpoints = 36 entries). Built 30, one for one with the theme (story 7). Counts check uses 30.",
+    "Mode name chosen: Default (spec fixes one mode but gives no name).",
+    "Variable scopes follow how the code uses each token: fills FRAME_FILL+SHAPE_FILL, text TEXT_FILL, borders STROKE_COLOR; ink/sheet/paper carry several; marker-ring and observation-ring (box-shadow rings) add EFFECT_COLOR; unused amber/amber-pale default to fills, water to fill+stroke.",
+    "Page 1 (0:1) was renamed Foundations rather than deleted, so the original page ID is kept.",
+    "Weight mapping: 400 Regular, 600 Semibold, 700/750/800 Bold (SF Pro Heavy exists but the spec allows only Regular, Semibold, Bold).",
+    "FONT SUBSTITUTION (build decision, 2026-10-28): the spec's body face SF Pro appears in figma.listAvailableFontsAsync() but cannot be loaded or rendered in the build runtime: every SF Pro text node reports hasMissingFont=true and width 0, bound or unbound, while Literata renders. Inter (present, the metric stand-in for SF) is used for body text instead. font/sans holds the value 'Inter' so one edit in Figma desktop (where SF Pro is installed) switches every bound text node back; the Inter style 'Semi Bold' corresponds to SF Pro 'Semibold'. The font assertion check therefore accepts Literata and Inter. First SF Pro sheet (9:2) was removed and rebuilt as 11:3.",
+    "Text recipe: resize() reverts textAutoResize to fixed, so wrapping text sets HEIGHT again after resize+characters (helpers patched; specimen fixed in place).",
+    "inventory.md is committed alongside spec.md and state.json in the phase-1 commit because the spec names it as a companion; it is not otherwise changed."
+  ],
+  "checks": {
+    "foundations": {
+      "variables": {
+        "COLOR": 30,
+        "STRING": 2,
+        "modes": [
+          "Default"
+        ],
+        "allScopes": []
+      },
+      "effectStyles": 1,
+      "pages": [
+        "Foundations",
+        "Components",
+        "Icons and markers",
+        "Screens",
+        "Reference"
+      ],
+      "specimen": {
+        "swatches": 30,
+        "textNodes": 114,
+        "fontFamilyBound": 114,
+        "fontsUsed": {
+          "Literata Regular": 12,
+          "SF Pro Regular": 56,
+          "SF Pro Semibold": 43,
+          "SF Pro Bold": 3,
+          "Inter Regular": 56,
+          "Inter Semi Bold": 43,
+          "Inter Bold": 3
+        },
+        "missingFont": 0,
+        "zeroWidth": 0,
+        "wrappedTextFixed": 20,
+        "sheetHeight": 2783
+      }
+    }
+  },
+  "fonts": {
+    "display": [
+      "Literata",
+      "Regular"
+    ],
+    "sans": [
+      "Inter",
+      "Regular"
+    ],
+    "sansSemibold": [
+      "Inter",
+      "Semi Bold"
+    ],
+    "sansBold": [
+      "Inter",
+      "Bold"
+    ],
+    "allowedFamilies": [
+      "Literata",
+      "Inter"
+    ]
+  }
+}
