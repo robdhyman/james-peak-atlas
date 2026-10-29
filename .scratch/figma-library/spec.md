@@ -11,7 +11,7 @@ The atlas exists only as code. There is no design file where its chrome can be l
 Three things make this harder than tracing a screenshot:
 
 - **Figma has no Georgia**, the atlas's display face, so a stand-in has to be chosen and recorded, or the Figma and the site drift quietly.
-- **The theme defines 35 colour tokens, but the components mostly use literal hex**: 134 distinct values, several one digit away from a token. A library that bound everything to tokens would claim a system the code does not have. One that bound nothing would not be a library.
+- **The theme defines 30 colour tokens, but the components mostly use literal hex**: 134 distinct values, several one digit away from a token. A library that bound everything to tokens would claim a system the code does not have. One that bound nothing would not be a library.
 - **The Figma file is empty but already subscribes to a team colour library from another project**, which a build would be tempted to reuse.
 
 ## Solution
@@ -157,7 +157,7 @@ Rules that apply to all of them:
 
 A good check reads the Figma file back and compares it with this spec; it does not trust the script that wrote it. Three checks, all recorded in the ledger:
 
-1. **Counts.** A read-only script returns the variable count by type (35 colour, 2 font), the effect style count (1), the component set count (5) and each set's variant count (4, 12, 3, 3, 7), the plain component count against the inventory, and the page list. Any mismatch fails the phase it belongs to.
+1. **Counts.** A read-only script returns the variable count by type (30 colour, 2 font), the effect style count (1), the component set count (5) and each set's variant count (4, 12, 3, 3, 7), the plain component count against the inventory, and the page list. Any mismatch fails the phase it belongs to.
 2. **Fonts.** A read-only script walks every text node in the file and returns any whose family is not Literata or SF Pro, with its page and parent. The list must be empty. A successful font load is not evidence; only the read-back is.
 3. **Screenshot pairs.** One screenshot of each screen frame beside its capture in the repo (the published desktop screenshot, the 390 px drawer capture, the 390 px detail capture). The build lists every visible difference. Tolerated differences, recorded in advance: the Literata and SF Pro substitution; the legend open on desktop where the capture has it closed; the scope toggle visible where the capture scrolled it away; the map area being a flat placeholder; and the lower half of the detail panel, which the desktop capture crops and which is built from code and data.
 
