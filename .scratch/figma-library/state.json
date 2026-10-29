@@ -1,7 +1,7 @@
 {
   "runId": "figma-library-2026-10-28",
   "scope": "full-library",
-  "step": "screens",
+  "step": "screens/reference",
   "figma": {
     "fileKey": "FqbSZ8tKFAU7j8sInSFwQ7",
     "originalPage": {
@@ -116,7 +116,11 @@
       "Layer switch": "16:113",
       "Candidate card": "18:208"
     },
-    "screens": {},
+    "screens": {
+      "Desktop 1440 × 900": "33:2",
+      "Phone drawer 390 × 844": "33:753",
+      "Phone sheet 390 × 844": "33:1260"
+    },
     "frames": {
       "Foundations / Specimen sheet": "11:3",
       "Icons and markers / Review": "14:49",
@@ -182,7 +186,21 @@
       ],
       "Review / Sidebar · Map layers": "29:962",
       "Review / Detail panel": "29:1425",
-      "Review / Method dialog": "29:1650"
+      "Review / Method dialog": "29:1650",
+      "Desktop / Map placeholder": "33:332",
+      "Desktop / Detail panel": "33:463",
+      "Desktop / Candidate tooltip": "33:357",
+      "Desktop / Candidate markers": {
+        "E4": "33:333",
+        "E3": "33:336",
+        "E5": "33:339",
+        "E1": "33:342",
+        "E2": "33:345",
+        "E6": "33:348"
+      },
+      "Phone drawer / Sidebar": "33:799",
+      "Phone drawer / Legend button": "33:797",
+      "Phone sheet / Detail panel": "33:1308"
     }
   },
   "drift": [
@@ -217,7 +235,10 @@
     "components/detail-panel",
     "components/sidebar",
     "components/review-frame",
-    "components"
+    "components",
+    "screens/desktop",
+    "screens/phone-drawer",
+    "screens/phone-sheet"
   ],
   "notes": [
     "Spec/inventory disagreement: spec counts 35 colour variables; src/index.css @theme defines 30 colour tokens (2 fonts + 30 colours + 1 shadow + 3 breakpoints = 36 entries). Built 30, one for one with the theme (story 7). Counts check uses 30.",
@@ -241,7 +262,13 @@
     "Sidebar (28:233): fixed 326 × 814 (900 − 86 header), paper fill, 1 px line-strong right border, clips. Sidebar header and Tabs (exposed) on top; the two tab panels are FILL-height frames that clip, mirroring the app’s scrolling tabpanel, so the Candidates panel shows the first two and a half cards and the Map layers panel ends inside the model-scores group, exactly as the 814 px viewport would. Booleans “Map layers panel” (default false) and “Candidates panel” (default true) toggle their visibility. Compact model-score rows: Layer switch Off instances resized to 29 px (instance resize works), nested row set to FILL height, label 11 px. Layer swatch colours are instance fill overrides from inventory section 39; Mapped water binds to color/water exactly. Checked rows follow the Terrain preset (trails, roads, trailheads, boundary, contours, relief, water).",
     "Candidate list in the Sidebar: scout order from public/data/candidates.geojson (EP-04, EP-05, EP-03, EP-01, EP-06, EP-02), position badge = list position, pool rank chip = Nearby #rank, index = Math.round(score) / 100, round trip = roundtrip_lower_bound_miles.toFixed(1) + ' mi minimum round trip' (format.ts). EP-04 is State=Selected; all Field status=To scout. No JP context candidates, no observation data.",
     "Review frame “Components / Review” (29:363, 1840 × 4785, paper fill, 9 px muted uppercase captions bound to font/sans): Top bar; every plain component once; all 7 Button kinds with realistic labels; all 4 Layer switch states; both Notice states; Legend panel, Export menu panel, Map loading; Candidate card in 4 of its 12 variants (Default/To scout, Selected/Scouted, Focused/Camera placed, Default/Ruled out); Confirm dialog, Fatal error; the Sidebar twice (Candidates and Map layers, with the exposed Tabs switched); Detail panel; Method dialog. Main components stay outside the frame.",
-    "Pages are untouched in phase 2 except the Components page; screenshots are fetched inline (base64) because the environment’s network policy denies www.figma.com for curl."
+    "Pages are untouched in phase 2 except the Components page; screenshots are fetched inline (base64) because the environment’s network policy denies www.figma.com for curl.",
+    "Layer switch (16:113): the label text in all four variants is now FILL-width with HEIGHT auto-resize so long labels wrap inside the row (the Darkness row wraps to two lines in the 296 px drawer, as in the capture). Done during phase 3; the Sidebar instances inherit it.",
+    "Desktop screen (33:2): the inventory anchors the detail panel and legend inside `main` (below the 86 px header), so the Detail panel instance sits at (1087, 163) and is resized to 330 × 682 (= 900 − 163 − 55; the max-height 780 is not reached) rather than the 768 the hand-over note said; the published capture confirms the top edge at 163. Legend panel at (349, 598); Legend Map button at (1366, 106). Marker centres are the published capture’s positions as fractions of its 955 × 554 map, scaled to the 1114 × 814 placeholder: E4 (0.352, 0.498) Selected, E3 (0.113, 0.693), E5 (0.181, 0.693), E1 (0.132, 0.870), E2 (0.063, 0.915), E6 (0.114, 0.975, half clipped as in the capture); trailheads at (0.584, 0.330) and 30 / 35 px down-right of it (the second P is hidden by the detail panel in the capture). Candidate tooltip centred 15 px above E4. Leaflet corners: zoom control right 10 / bottom 25 (above the 15 px attribution), scale bar left 10 / bottom 5, attribution bottom right. Markers and Leaflet controls live inside the Map placeholder frame (clipped), overlays on the screen frame, mirroring the DOM.",
+    "Phone top bar (both phone screens): Top bar instance resized to 390 × 72 with Menu button on, Brand mark off, Method label off, Occupancy line off; instance overrides pad 15 / gap 11, the spacer frame hidden and the Scenario badge set to FILL so the 8 px / 5 % scenario text wraps into the leftover width (LOW / WATER · / 2027, as in the captures); title 25 px; the nested Export button gets label “6”, pad 9 and gap 6. The row totals exactly 390 (34 + 153 + 15 + 64 + 50 plus paddings and gaps).",
+    "Phone drawer (33:753): Sidebar instance resized to 296 × 772 at (0, 72) with Map layers panel on, Candidates panel off, Tabs switched to Map layers, drawer shadow 9px 0 30px #18391f22, and the phone paddings (19 px) overridden on the nested Sidebar header, Tabs and both panels. Legend Map button at top 12 / right 12 with pad 9 and 9 px label; one trailhead peeks at the right edge like the capture; legend panel closed.",
+    "Phone sheet (33:1260): Detail panel instance resized to 390 × 523 (62 vh of 844) at y 321 with top radii 9 and bottom radii 0, header pad 20/20/16/20, body pad 16/20/22/20 and the name at 24 px; the close button follows the right edge through its MAX constraint (x 351). Two trailheads at the capture’s positions; Leaflet controls and the scale bar sit under the sheet as in the app.",
+    "Reference captures: the container’s network policy answers 403 to CONNECT for mcp.figma.com and www.figma.com, so the upload_assets POST (curl) and screenshot downloads are impossible from here; screenshots are taken inline (base64) and the captures are embedded with figma.createImage(figma.base64Decode(...)) inside use_figma, as JPEG tiles (desktop 1280 × 640 at 1× in eight 320 × 320 tiles, q78; each phone capture 390 × 844 in three 390 × 281 tiles, q82) placed in frames named with their source paths plus a caption, outside every component and screen. The originals in the repo are PNG (desktop at 2×)."
   ],
   "checks": {
     "foundations": {
@@ -352,6 +379,50 @@
           4785
         ],
         "instances": 57
+      }
+    },
+    "screens": {
+      "desktop": {
+        "id": "33:2",
+        "size": [
+          1440,
+          900
+        ],
+        "detail": [
+          330,
+          682
+        ],
+        "legendOpen": true,
+        "tooltip": true,
+        "markers": 6,
+        "trailheads": 2
+      },
+      "phoneDrawer": {
+        "id": "33:753",
+        "size": [
+          390,
+          844
+        ],
+        "drawer": [
+          296,
+          772
+        ],
+        "topBar": [
+          390,
+          72
+        ]
+      },
+      "phoneSheet": {
+        "id": "33:1260",
+        "size": [
+          390,
+          844
+        ],
+        "sheet": [
+          390,
+          523
+        ],
+        "topRadii": 9
       }
     }
   },
